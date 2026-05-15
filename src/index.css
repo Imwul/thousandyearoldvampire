@@ -37,8 +37,8 @@ body {
 }
 
 h1, h2, h3, h4, .gothic-font {
-  font-family: 'Cinzel', 'Pretendard', sans-serif;
-  font-weight: 700;
+  font-family: 'Chomsky', 'Old London', 'Pirata One', 'UnifrakturMaguntia', 'Grenze Gotisch', 'masonic-lodge', 'Cinzel', 'Pretendard', sans-serif;
+  font-weight: 400;
   letter-spacing: 0.02em;
   color: var(--crimson-dark);
 }
@@ -81,9 +81,9 @@ h1, h2, h3, h4, .gothic-font {
 }
 
 .app-title {
-  font-family: 'Cinzel', 'Pretendard', sans-serif;
-  font-weight: 900;
-  font-size: 3rem;
+  font-family: 'Chomsky', 'Old London', 'Pirata One', 'UnifrakturMaguntia', 'Grenze Gotisch', 'masonic-lodge', 'Cinzel', 'Pretendard', sans-serif;
+  font-weight: 400;
+  font-size: 3.5rem;
   color: var(--crimson-dark);
   text-shadow: 1px 1px 0 rgba(255,255,255,0.5), 2px 2px 4px rgba(0,0,0,0.15);
   margin-bottom: 0.5rem;
@@ -591,9 +591,9 @@ h1, h2, h3, h4, .gothic-font {
 }
 
 .setup-group label {
-  font-weight: bold;
+  font-weight: 400;
   color: var(--crimson-dark);
-  font-family: 'Cinzel', 'Pretendard', sans-serif;
+  font-family: 'Chomsky', 'Old London', 'Pirata One', 'UnifrakturMaguntia', 'Grenze Gotisch', 'masonic-lodge', 'Cinzel', 'Pretendard', sans-serif;
 }
 
 /* Actions & Utility buttons */
