@@ -66,4 +66,7 @@ export interface GameState {
   gameOverText: string;
   characterName: string;
   vampireOrigin: string; // summary of start
+  isAltActive?: boolean;
+  activeAltIdx?: number | null;
 }
+

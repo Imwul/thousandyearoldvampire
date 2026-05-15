@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { gamePrompts, PromptEntry } from './data/prompts';
+import { alternatePrompts } from './data/alternatePrompts';
 import { GameState, Memory, Experience, Skill, Resource, Character, Mark, DiaryEntry, JournalEntry } from './types';
 
 // --- Inline SVG Icons for Complete Offline Standalone Theme ---
@@ -68,6 +69,8 @@ const initialGameState: GameState = {
   gameOverText: '',
   characterName: '',
   vampireOrigin: '',
+  isAltActive: false,
+  activeAltIdx: null,
 };
 
 function App() {
@@ -113,7 +116,34 @@ function App() {
   // Get active prompt text based on prompt ID and visit count
   const activePrompt = gamePrompts.find(p => p.id === gameState.currentPromptId) || gamePrompts[0];
   const currentVisitCount = gameState.promptVisitHistory[gameState.currentPromptId] || 1;
-  const activePromptText = activePrompt.entries[Math.min(currentVisitCount - 1, activePrompt.entries.length - 1)];
+  
+  // Alternate Prompt Support (Appendix)
+  const isAltActive = !!gameState.isAltActive;
+  const activeAltPrompt = gameState.activeAltIdx !== null && gameState.activeAltIdx !== undefined
+    ? alternatePrompts[gameState.activeAltIdx] 
+    : null;
+
+  const activePromptText = isAltActive && activeAltPrompt
+    ? `[부록 대체사건] ${activeAltPrompt.text}`
+    : activePrompt.entries[Math.min(currentVisitCount - 1, activePrompt.entries.length - 1)];
+
+  // Handle Drawing an Alternate Prompt
+  const handleSubstitutePrompt = () => {
+    const randomIdx = Math.floor(Math.random() * alternatePrompts.length);
+    setGameState(prev => ({
+      ...prev,
+      isAltActive: true,
+      activeAltIdx: randomIdx
+    }));
+  };
+
+  const handleRevertPrompt = () => {
+    setGameState(prev => ({
+      ...prev,
+      isAltActive: false,
+      activeAltIdx: null
+    }));
+  };
 
   // Reset and start fresh
   const handleResetGame = () => {
@@ -234,7 +264,9 @@ function App() {
       promptVisitHistory: updatedVisits,
       journal: [journalItem, ...prev.journal],
       isGameOver: prev.isGameOver || willBeGameOver,
-      gameOverText: prev.isGameOver ? prev.gameOverText : (willBeGameOver ? gameOverMsg : '')
+      gameOverText: prev.isGameOver ? prev.gameOverText : (willBeGameOver ? gameOverMsg : ''),
+      isAltActive: false,
+      activeAltIdx: null
     }));
 
     setCurrentJournalText('');
@@ -252,7 +284,9 @@ function App() {
     setGameState(prev => ({
       ...prev,
       currentPromptId: targetId,
-      promptVisitHistory: updatedVisits
+      promptVisitHistory: updatedVisits,
+      isAltActive: false,
+      activeAltIdx: null
     }));
   };
 
@@ -524,14 +558,51 @@ function App() {
           </h3>
 
           {/* ACTIVE PROMPT VIEWER */}
-          <div className="prompt-display">
-            <div className="prompt-header">
-              <span className="prompt-badge">프롬프트 #{activePrompt.id} (P.{activePrompt.page})</span>
-              <span style={{fontSize: '0.8rem', fontWeight:'bold', color: 'var(--gold-dark)'}}>
-                방문 횟수: {currentVisitCount}회째
-              </span>
+          <div className="prompt-display" style={{
+            position: 'relative',
+            borderColor: isAltActive ? 'var(--gold-dark)' : 'rgba(140,21,21,0.2)',
+            boxShadow: isAltActive ? '0 0 15px rgba(143,117,54,0.15)' : 'none'
+          }}>
+            <div className="prompt-header" style={{flexWrap:'wrap', gap:'0.5rem'}}>
+              <div style={{display:'flex', alignItems:'center', gap:'0.5rem'}}>
+                {isAltActive ? (
+                  <span className="prompt-badge" style={{background:'var(--gold-dark)', border:'1px solid #fff'}}>
+                    ✨ 부록 대체 프롬프트: {activeAltPrompt?.category}
+                  </span>
+                ) : (
+                  <span className="prompt-badge">프롬프트 #{activePrompt.id} (P.{activePrompt.page})</span>
+                )}
+                {!isAltActive && (
+                  <span style={{fontSize: '0.8rem', fontWeight:'bold', color: 'var(--gold-dark)'}}>
+                    방문 횟수: {currentVisitCount}회째
+                  </span>
+                )}
+              </div>
+              
+              {/* Alternate Prompt Action buttons */}
+              <div style={{display:'flex', gap:'0.4rem'}}>
+                {isAltActive ? (
+                  <>
+                    <button className="btn-gold-outline" style={{padding:'0.1rem 0.4rem', fontSize:'0.75rem'}} onClick={handleSubstitutePrompt}>
+                      다른 부록 뽑기
+                    </button>
+                    <button className="btn-gold-outline" style={{padding:'0.1rem 0.4rem', fontSize:'0.75rem', borderColor:'var(--crimson-primary)', color:'var(--crimson-primary)'}} onClick={handleRevertPrompt}>
+                      기본으로 복구
+                    </button>
+                  </>
+                ) : (
+                  <button className="btn-gold-outline" style={{padding:'0.1rem 0.4rem', fontSize:'0.75rem', background:'rgba(143,117,54,0.1)'}} onClick={handleSubstitutePrompt} title="오리지널 룰북 부록(Appendix)의 대체 프롬프트 중 하나를 랜덤으로 뽑아 이벤트를 교체합니다.">
+                    ✨ 부록 프롬프트 대체
+                  </button>
+                )}
+              </div>
             </div>
-            <p className="prompt-body">{activePromptText}</p>
+            <p className="prompt-body" style={{
+              fontStyle: isAltActive ? 'italic' : 'normal',
+              color: isAltActive ? '#2b2519' : 'inherit'
+            }}>
+              {activePromptText}
+            </p>
           </div>
 
           {/* DICE ROLLER & MOVEMENT */}
