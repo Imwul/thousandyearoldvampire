@@ -508,7 +508,7 @@ function App() {
         <div className="parchment-card" style={{borderColor: 'var(--crimson-primary)'}}>
           <div className="vampire-seal">🩸</div>
           <h1 className="game-over-title gothic-font">연대기의 끝</h1>
-          <div className="ornate-divider"><span>FINIS</span></div>
+          <div className="ornate-divider"><span className="english-gothic" style={{fontSize: '1.4rem', letterSpacing: '0.1em'}}>FINIS</span></div>
           
           <p className="prompt-body" style={{fontSize: '1.3rem', textAlign:'center', marginBottom: '2rem'}}>
             "{gameState.gameOverText}"
@@ -539,7 +539,7 @@ function App() {
       <header className="app-header" style={{flexDirection: 'row', justifyContent: 'space-between', width:'100%', paddingBottom:'0.5rem'}}>
         <div style={{textAlign: 'left'}}>
           <h2 style={{fontSize: '1.5rem', color:'var(--crimson-primary)'}} className="gothic-font">천년 동안 살아온 흡혈귀</h2>
-          <span style={{fontSize:'0.9rem', color: 'var(--gold-dark)'}}>Chronicle of <strong>{gameState.characterName}</strong></span>
+          <span className="english-gothic" style={{fontSize:'1.2rem', color: 'var(--gold-dark)', marginTop: '0.2rem'}}>Chronicle of <strong>{gameState.characterName}</strong></span>
         </div>
         
         <div className="action-btn-group">
