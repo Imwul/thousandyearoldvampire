@@ -37,7 +37,8 @@ body {
 }
 
 h1, h2, h3, h4, .gothic-font {
-  font-family: 'Uncial Antiqua', 'Cinzel Decorative', 'MedievalSharp', cursive, serif;
+  font-family: 'Cinzel', 'Pretendard', sans-serif;
+  font-weight: 700;
   letter-spacing: 0.02em;
   color: var(--crimson-dark);
 }
@@ -80,18 +81,22 @@ h1, h2, h3, h4, .gothic-font {
 }
 
 .app-title {
+  font-family: 'Cinzel', 'Pretendard', sans-serif;
+  font-weight: 900;
   font-size: 3rem;
-  color: var(--crimson-primary);
-  text-shadow: 1px 1px 2px rgba(0,0,0,0.2);
+  color: var(--crimson-dark);
+  text-shadow: 1px 1px 0 rgba(255,255,255,0.5), 2px 2px 4px rgba(0,0,0,0.15);
   margin-bottom: 0.5rem;
+  letter-spacing: -0.02em;
 }
 
 .app-subtitle {
-  font-family: 'Uncial Antiqua', serif;
-  font-size: 1.25rem;
+  font-family: 'Almendra SC', serif;
+  font-size: 1.3rem;
+  font-weight: 700;
   color: var(--gold-dark);
   text-transform: uppercase;
-  letter-spacing: 0.15em;
+  letter-spacing: 0.2em;
 }
 
 .main-grid {
@@ -182,8 +187,9 @@ h1, h2, h3, h4, .gothic-font {
   color: var(--bg-parchment);
   border: 2px solid var(--gold-accent);
   padding: 0.75rem 1.5rem;
-  font-family: 'Uncial Antiqua', 'Pretendard', sans-serif;
+  font-family: 'Almendra SC', 'Pretendard', sans-serif;
   font-size: 1.1rem;
+  font-weight: 700;
   border-radius: 3px;
   cursor: pointer;
   box-shadow: 0 4px 6px rgba(0,0,0,0.2);
@@ -259,7 +265,8 @@ h1, h2, h3, h4, .gothic-font {
 .prompt-badge {
   background: var(--crimson-dark);
   color: #fff;
-  font-family: 'Uncial Antiqua', serif;
+  font-family: 'Almendra SC', 'Pretendard', sans-serif;
+  font-weight: 700;
   padding: 0.25rem 0.75rem;
   border-radius: 50px;
   font-size: 0.9rem;
@@ -586,7 +593,7 @@ h1, h2, h3, h4, .gothic-font {
 .setup-group label {
   font-weight: bold;
   color: var(--crimson-dark);
-  font-family: 'Cinzel Decorative', 'Pretendard', serif;
+  font-family: 'Cinzel', 'Pretendard', sans-serif;
 }
 
 /* Actions & Utility buttons */
