@@ -51,6 +51,12 @@ const IconReset = () => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
 );
 
+const GoogleIcon = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" style={{ marginRight: '4px' }}>
+    <path fill="#EA4335" d="M12.24 10.285V14.4h6.887c-.648 2.41-2.519 4.114-5.136 4.114-3.51 0-6.357-2.847-6.357-6.357s2.847-6.357 6.357-6.357c1.623 0 3.096.61 4.237 1.62l3.056-3.056C19.223 2.507 15.938 1 12.24 1 6.033 1 1 6.033 1 12.24s5.033 11.24 11.24 11.24c5.897 0 10.867-4.148 10.867-11.24 0-.568-.06-1.125-.174-1.668H12.24z"/>
+  </svg>
+);
+
 const LOCAL_STORAGE_KEY = 'athousandyearoldvampire_savegame';
 
 // Create 5 empty memory slots
@@ -609,8 +615,8 @@ function App() {
                 <p style={{ fontSize: '0.9rem', color: 'var(--text-light)', textAlign: 'center' }}>
                   여러 기기 간 연동을 원하시면 구글 계정으로 로그인해 여정 데이터를 동기화하세요.
                 </p>
-                <button type="button" className="btn-medieval" style={{ fontSize: '0.9rem', padding: '0.5rem 1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }} onClick={handleLogin}>
-                  <LogIn size={16} /> Google 로그인하여 연동하기
+                <button type="button" className="btn-medieval" style={{ fontSize: '0.9rem', padding: '0.5rem 1.2rem', display: 'flex', alignItems: 'center', gap: '0.5rem', backgroundColor: '#fff', color: '#2b2519', border: '1.5px solid var(--gold-accent)' }} onClick={handleLogin}>
+                  <GoogleIcon /> Google 계정으로 연동하기
                 </button>
               </div>
             )}
@@ -727,8 +733,8 @@ function App() {
               </button>
             </div>
           ) : (
-            <button className="btn-medieval" style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', padding: '0.35rem 0.7rem', fontSize: '0.85rem', backgroundColor: 'var(--crimson-primary)', border: '1.5px solid var(--gold-accent)' }} onClick={handleLogin}>
-              <LogIn size={14} /> Google 연동
+            <button className="btn-medieval" style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', padding: '0.4rem 0.8rem', fontSize: '0.85rem', backgroundColor: '#fff', color: '#2b2519', border: '1.5px solid var(--gold-accent)', fontWeight: 'bold' }} onClick={handleLogin}>
+              <GoogleIcon /> Google 로그인 연동
             </button>
           )}
 
