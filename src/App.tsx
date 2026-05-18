@@ -3,6 +3,13 @@ import { gamePrompts, PromptEntry } from './data/prompts';
 import { alternatePrompts } from './data/alternatePrompts';
 import { GameState, Memory, Experience, Skill, Resource, Character, Mark, DiaryEntry, JournalEntry } from './types';
 
+// --- Firebase Authentication & Firestore Sync ---
+import { auth, db, googleProvider } from './firebase';
+import { signInWithPopup, signOut, onAuthStateChanged, type User } from 'firebase/auth';
+import { doc, onSnapshot, setDoc } from 'firebase/firestore';
+import { LogIn, LogOut } from 'lucide-react';
+
+
 // --- Inline SVG Icons for Complete Offline Standalone Theme ---
 const IconScroll = () => (
   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
@@ -92,19 +99,88 @@ function App() {
   const [newCharacterType, setNewCharacterType] = useState<'mortal' | 'immortal'>('mortal');
   const [newMarkDesc, setNewMarkDesc] = useState('');
 
-  // Load save from LocalStorage
+  const [user, setUser] = useState<User | null>(null);
+
+  // Firebase Auth Listener
   useEffect(() => {
-    const saved = localStorage.getItem(LOCAL_STORAGE_KEY);
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        setGameState(parsed);
-        setIsSetupMode(false);
-      } catch (e) {
-        console.error('Failed to load save', e);
+    if (!auth) return;
+    const unsubscribe = onAuthStateChanged(auth, (currentUser: any) => {
+      setUser(currentUser);
+      if (!currentUser) {
+        // When logged out, load local save to continue playing offline
+        const saved = localStorage.getItem(LOCAL_STORAGE_KEY);
+        if (saved) {
+          try {
+            setGameState(JSON.parse(saved));
+            setIsSetupMode(false);
+          } catch (e) {
+            console.error('Failed to load local save on logout', e);
+          }
+        } else {
+          setGameState(initialGameState);
+          setIsSetupMode(true);
+        }
+      }
+    });
+    return () => unsubscribe();
+  }, []);
+
+  // Firebase Real-time Sync Listener
+  useEffect(() => {
+    if (!user || !db) return;
+    const docRef = doc(db as any, 'vampire_saves', user.uid);
+    const unsubscribe = onSnapshot(docRef, (docSnap: any) => {
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        if (data.gameState) {
+          try {
+            const localStr = localStorage.getItem(LOCAL_STORAGE_KEY);
+            if (localStr === data.gameState) {
+              return; // Already in sync, avoid triggering state update to prevent loops
+            }
+            const parsed = JSON.parse(data.gameState);
+            setGameState(parsed);
+            setIsSetupMode(false);
+          } catch (e) {
+            console.error("Failed to parse synced state", e);
+          }
+        }
+      } else {
+        // If no cloud save exists, seed from localStorage immediately
+        const localStr = localStorage.getItem(LOCAL_STORAGE_KEY);
+        if (localStr) {
+          try {
+            const parsed = JSON.parse(localStr);
+            if (parsed.characterName) {
+              setDoc(docRef, { gameState: localStr }, { merge: true })
+                .catch((err: any) => console.error("Initial cloud save failed:", err));
+            }
+          } catch (e) {
+            console.error("Failed to parse localStr during seeding", e);
+          }
+        }
+      }
+    }, (error: any) => {
+      console.error("Firebase sync error:", error);
+    });
+    return () => unsubscribe();
+  }, [user]);
+
+  // Load save from LocalStorage (initial load on boot, only if no user is signed in yet)
+  useEffect(() => {
+    if (!user) {
+      const saved = localStorage.getItem(LOCAL_STORAGE_KEY);
+      if (saved) {
+        try {
+          const parsed = JSON.parse(saved);
+          setGameState(parsed);
+          setIsSetupMode(false);
+        } catch (e) {
+          console.error('Failed to load save', e);
+        }
       }
     }
-  }, []);
+  }, [user]);
 
   // Save state to LocalStorage on any change
   useEffect(() => {
@@ -112,6 +188,19 @@ function App() {
       localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(gameState));
     }
   }, [gameState, isSetupMode]);
+
+  // Save state to Firebase on any change (debounced 1s)
+  useEffect(() => {
+    if (user && db && !isSetupMode && gameState.characterName) {
+      const timer = setTimeout(() => {
+        const docRef = doc(db as any, 'vampire_saves', user.uid);
+        setDoc(docRef, { gameState: JSON.stringify(gameState) }, { merge: true })
+          .catch((err: any) => console.error("Firebase save failed:", err));
+      }, 1000); // 1-second debounce
+      return () => clearTimeout(timer);
+    }
+  }, [gameState, user, isSetupMode]);
+
 
   // Get active prompt text based on prompt ID and visit count
   const activePrompt = gamePrompts.find(p => p.id === gameState.currentPromptId) || gamePrompts[0];
@@ -148,6 +237,11 @@ function App() {
   // Reset and start fresh
   const handleResetGame = () => {
     if (window.confirm('정말 모든 기록을 초기화하고 처음부터 다시 시작하시겠습니까? (일기장과 모든 세이브가 삭제됩니다)')) {
+      if (user && db) {
+        const docRef = doc(db as any, 'vampire_saves', user.uid);
+        setDoc(docRef, { gameState: JSON.stringify(initialGameState) }, { merge: true })
+          .catch((err: any) => console.error("Firebase reset failed:", err));
+      }
       localStorage.removeItem(LOCAL_STORAGE_KEY);
       setGameState(initialGameState);
       setIsSetupMode(true);
@@ -156,6 +250,30 @@ function App() {
       setD6Val(null);
     }
   };
+
+  const handleLogin = async () => {
+    try {
+      if (auth && googleProvider) {
+        await signInWithPopup(auth, googleProvider);
+      }
+    } catch (error: any) {
+      console.error("Login failed:", error);
+      alert("로그인 실패: " + (error.message || "알 수 없는 오류"));
+    }
+  };
+
+  const handleLogout = async () => {
+    if (window.confirm("정말로 로그아웃 하시겠습니까? 현재 기기의 세이브는 유지되나 새로운 클라우드 저장은 중단됩니다.")) {
+      try {
+        if (auth) {
+          await signOut(auth);
+        }
+      } catch (error) {
+        console.error("Logout failed:", error);
+      }
+    }
+  };
+
 
   // Start game from setup
   const handleStartGame = (e: React.FormEvent) => {
@@ -460,6 +578,43 @@ function App() {
             <h1 className="app-title">천년 동안 살아온 흡혈귀</h1>
             <p className="app-subtitle">Thousand Year Old Vampire Companion</p>
           </div>
+
+          {/* Cloud Sync Integration Segment */}
+          <div style={{
+            margin: '0 0 1.5rem 0',
+            padding: '1rem',
+            backgroundColor: 'rgba(143, 117, 54, 0.08)',
+            border: '1px dashed var(--gold-accent)',
+            borderRadius: '4px',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            gap: '0.8rem'
+          }}>
+            {user ? (
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.4rem', width: '100%' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--crimson-dark)', fontWeight: 'bold' }}>
+                  <span style={{ display: 'inline-block', width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#27ae60', boxShadow: '0 0 8px #27ae60' }}></span>
+                  <span>클라우드 동기화 활성화됨: {user.displayName}</span>
+                </div>
+                <p style={{ fontSize: '0.85rem', color: 'var(--text-light)', textAlign: 'center' }}>
+                  구글 계정에 연결되었습니다. 클라우드에 세이브 데이터가 있는 경우 자동으로 불러옵니다.
+                </p>
+                <button type="button" className="btn-gold-outline" style={{ fontSize: '0.8rem', padding: '0.3rem 0.8rem' }} onClick={handleLogout}>
+                  로그아웃
+                </button>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.4rem', width: '100%' }}>
+                <p style={{ fontSize: '0.9rem', color: 'var(--text-light)', textAlign: 'center' }}>
+                  여러 기기 간 연동을 원하시면 구글 계정으로 로그인해 여정 데이터를 동기화하세요.
+                </p>
+                <button type="button" className="btn-medieval" style={{ fontSize: '0.9rem', padding: '0.5rem 1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }} onClick={handleLogin}>
+                  <LogIn size={16} /> Google 로그인하여 연동하기
+                </button>
+              </div>
+            )}
+          </div>
           
           <form onSubmit={handleStartGame}>
             <p className="setup-instruction">
@@ -542,8 +697,42 @@ function App() {
           <span className="english-gothic" style={{fontSize:'1.2rem', color: 'var(--gold-dark)', marginTop: '0.2rem'}}>Chronicle of <strong>{gameState.characterName}</strong></span>
         </div>
         
-        <div className="action-btn-group">
-          <button className="btn-gold-outline" style={{display:'flex', alignItems:'center', gap:'0.3rem'}} onClick={handleResetGame}>
+        <div className="action-btn-group" style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
+          {user ? (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+              {/* Live Sync Status Badge */}
+              <div style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.4rem',
+                backgroundColor: 'rgba(39, 174, 96, 0.1)',
+                border: '1px solid rgba(39, 174, 96, 0.3)',
+                padding: '0.35rem 0.6rem',
+                borderRadius: '3px',
+                fontSize: '0.85rem',
+                color: '#27ae60',
+                fontWeight: 'bold'
+              }}>
+                <span style={{
+                  width: '6px',
+                  height: '6px',
+                  borderRadius: '50%',
+                  backgroundColor: '#27ae60',
+                  boxShadow: '0 0 6px #27ae60'
+                }}></span>
+                <span>실시간 동기화 중 ({user.displayName})</span>
+              </div>
+              <button className="btn-gold-outline" style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', padding: '0.35rem 0.7rem', fontSize: '0.85rem' }} onClick={handleLogout}>
+                로그아웃
+              </button>
+            </div>
+          ) : (
+            <button className="btn-medieval" style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', padding: '0.35rem 0.7rem', fontSize: '0.85rem', backgroundColor: 'var(--crimson-primary)', border: '1.5px solid var(--gold-accent)' }} onClick={handleLogin}>
+              <LogIn size={14} /> Google 연동
+            </button>
+          )}
+
+          <button className="btn-gold-outline" style={{display:'flex', alignItems:'center', gap:'0.3rem', padding: '0.35rem 0.7rem', fontSize: '0.85rem'}} onClick={handleResetGame}>
             <IconReset /> 초기화
           </button>
         </div>
