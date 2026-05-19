@@ -106,6 +106,8 @@ function App() {
   const [newResourceName, setNewResourceName] = useState('');
   const [newCharacterName, setNewCharacterName] = useState('');
   const [newCharacterType, setNewCharacterType] = useState<'mortal' | 'immortal'>('mortal');
+  const [newResourceIsStationary, setNewResourceIsStationary] = useState(false);
+  const [newSkillIsAncient, setNewSkillIsAncient] = useState(false);
   const [newMarkDesc, setNewMarkDesc] = useState('');
 
   // Journal editing states
@@ -528,9 +530,10 @@ function App() {
     if (!newSkillName.trim()) return;
     setGameState(prev => ({
       ...prev,
-      skills: [...prev.skills, { id: `s-${Date.now()}`, name: newSkillName.trim(), isChecked: false }]
+      skills: [...prev.skills, { id: `s-${Date.now()}`, name: newSkillName.trim(), isChecked: false, isAncient: newSkillIsAncient }]
     }));
     setNewSkillName('');
+    setNewSkillIsAncient(false);
   };
 
   const handleToggleSkill = (id: string) => {
@@ -552,9 +555,10 @@ function App() {
     if (!newResourceName.trim()) return;
     setGameState(prev => ({
       ...prev,
-      resources: [...prev.resources, { id: `r-${Date.now()}`, name: newResourceName.trim(), isStationary: false }]
+      resources: [...prev.resources, { id: `r-${Date.now()}`, name: newResourceName.trim(), isStationary: newResourceIsStationary }]
     }));
     setNewResourceName('');
+    setNewResourceIsStationary(false);
   };
 
   const handleToggleResourceLost = (id: string) => {
@@ -1128,18 +1132,24 @@ function App() {
                 <span style={{color: 'var(--text-light)', fontSize: '0.85rem'}}>예: 승마, 야수 교감, 왕실 예법, 사교계의 매력, 검술 등</span>
               </p>
             </div>
-            <div className="add-form">
-              <input 
-                type="text" 
-                className="input-medieval" 
-                placeholder="새 기술 추가 (예: 은밀한 이동, 조작...)"
-                value={newSkillName}
-                onChange={e => setNewSkillName(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && handleAddSkill()}
-              />
-              <button className="btn-medieval" onClick={handleAddSkill} style={{padding:'0.5rem'}}>
-                <IconPlus />
-              </button>
+            <div className="add-form" style={{flexDirection: 'column', gap: '0.5rem', alignItems: 'stretch'}}>
+              <div style={{display: 'flex', gap: '0.5rem', alignItems: 'center'}}>
+                <label style={{display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.9rem', color: 'var(--text-color)', cursor: 'pointer', whiteSpace: 'nowrap'}}>
+                  <input type="checkbox" checked={newSkillIsAncient} onChange={e => setNewSkillIsAncient(e.target.checked)} style={{cursor: 'pointer'}} /> 고대 기술
+                </label>
+                <input 
+                  type="text" 
+                  className="input-medieval" 
+                  style={{flex: 1}}
+                  placeholder="새 기술 추가 (예: 은밀한 이동, 조작...)"
+                  value={newSkillName}
+                  onChange={e => setNewSkillName(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && handleAddSkill()}
+                />
+                <button className="btn-medieval" onClick={handleAddSkill} style={{padding:'0.5rem'}}>
+                  <IconPlus />
+                </button>
+              </div>
             </div>
             <div className="item-grid" style={{marginTop: '1.5rem'}}>
               {gameState.skills.map(skill => (
@@ -1175,18 +1185,24 @@ function App() {
                 <span style={{color: 'var(--text-light)', fontSize: '0.85rem'}}>예: 금화 주머니, 조상의 저택, 낡은 마차, 기사단장의 검 등</span>
               </p>
             </div>
-            <div className="add-form">
-              <input 
-                type="text" 
-                className="input-medieval" 
-                placeholder="새 자원 추가 (예: 옛 고성, 재화 주머니...)"
-                value={newResourceName}
-                onChange={e => setNewResourceName(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && handleAddResource()}
-              />
-              <button className="btn-medieval" onClick={handleAddResource} style={{padding:'0.5rem'}}>
-                <IconPlus />
-              </button>
+            <div className="add-form" style={{flexDirection: 'column', gap: '0.5rem', alignItems: 'stretch'}}>
+              <div style={{display: 'flex', gap: '0.5rem', alignItems: 'center'}}>
+                <label style={{display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.9rem', color: 'var(--text-color)', cursor: 'pointer', whiteSpace: 'nowrap'}}>
+                  <input type="checkbox" checked={newResourceIsStationary} onChange={e => setNewResourceIsStationary(e.target.checked)} style={{cursor: 'pointer'}} /> 고정 자원
+                </label>
+                <input 
+                  type="text" 
+                  className="input-medieval" 
+                  style={{flex: 1}}
+                  placeholder="새 자원 추가 (예: 옛 고성, 재화 주머니...)"
+                  value={newResourceName}
+                  onChange={e => setNewResourceName(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && handleAddResource()}
+                />
+                <button className="btn-medieval" onClick={handleAddResource} style={{padding:'0.5rem'}}>
+                  <IconPlus />
+                </button>
+              </div>
             </div>
             <div className="item-grid" style={{marginTop: '1.5rem'}}>
               {gameState.resources.map(res => (
