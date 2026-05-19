@@ -137,14 +137,17 @@ function App() {
   const [editingSkillId, setEditingSkillId] = useState<string | null>(null);
   const [editingSkillName, setEditingSkillName] = useState<string>('');
   const [editingSkillDesc, setEditingSkillDesc] = useState<string>('');
+  const [editingSkillIsAncient, setEditingSkillIsAncient] = useState<boolean>(false);
   
   const [editingResourceId, setEditingResourceId] = useState<string | null>(null);
   const [editingResourceName, setEditingResourceName] = useState<string>('');
   const [editingResourceDesc, setEditingResourceDesc] = useState<string>('');
+  const [editingResourceIsStationary, setEditingResourceIsStationary] = useState<boolean>(false);
   
   const [editingCharacterId, setEditingCharacterId] = useState<string | null>(null);
   const [editingCharacterName, setEditingCharacterName] = useState<string>('');
   const [editingCharacterDesc, setEditingCharacterDesc] = useState<string>('');
+  const [editingCharacterType, setEditingCharacterType] = useState<'mortal' | 'immortal'>('mortal');
   
   const [editingMarkId, setEditingMarkId] = useState<string | null>(null);
   const [editingMarkName, setEditingMarkName] = useState<string>('');
@@ -679,9 +682,11 @@ function App() {
   // Inline editing handlers for lists
   const handleStartEditSkill = (id: string, name: string) => {
     const parsed = parseTextWithDescription(name);
+    const skill = gameState.skills.find(s => s.id === id);
     setEditingSkillId(id);
     setEditingSkillName(parsed.title);
     setEditingSkillDesc(parsed.desc);
+    setEditingSkillIsAncient(skill ? !!skill.isAncient : false);
   };
   const handleSaveEditSkill = (id: string) => {
     if (!editingSkillName.trim()) return;
@@ -690,16 +695,18 @@ function App() {
       : editingSkillName.trim();
     setGameState(prev => ({
       ...prev,
-      skills: prev.skills.map(s => s.id === id ? { ...s, name: fullName } : s)
+      skills: prev.skills.map(s => s.id === id ? { ...s, name: fullName, isAncient: editingSkillIsAncient } : s)
     }));
     setEditingSkillId(null);
   };
 
   const handleStartEditResource = (id: string, name: string) => {
     const parsed = parseTextWithDescription(name);
+    const res = gameState.resources.find(r => r.id === id);
     setEditingResourceId(id);
     setEditingResourceName(parsed.title);
     setEditingResourceDesc(parsed.desc);
+    setEditingResourceIsStationary(res ? !!res.isStationary : false);
   };
   const handleSaveEditResource = (id: string) => {
     if (!editingResourceName.trim()) return;
@@ -708,16 +715,18 @@ function App() {
       : editingResourceName.trim();
     setGameState(prev => ({
       ...prev,
-      resources: prev.resources.map(r => r.id === id ? { ...r, name: fullName } : r)
+      resources: prev.resources.map(r => r.id === id ? { ...r, name: fullName, isStationary: editingResourceIsStationary } : r)
     }));
     setEditingResourceId(null);
   };
 
   const handleStartEditCharacter = (id: string, name: string) => {
     const parsed = parseTextWithDescription(name);
+    const char = gameState.characters.find(c => c.id === id);
     setEditingCharacterId(id);
     setEditingCharacterName(parsed.title);
     setEditingCharacterDesc(parsed.desc);
+    setEditingCharacterType(char ? char.type : 'mortal');
   };
   const handleSaveEditCharacter = (id: string) => {
     if (!editingCharacterName.trim()) return;
@@ -726,7 +735,7 @@ function App() {
       : editingCharacterName.trim();
     setGameState(prev => ({
       ...prev,
-      characters: prev.characters.map(c => c.id === id ? { ...c, name: fullName } : c)
+      characters: prev.characters.map(c => c.id === id ? { ...c, name: fullName, type: editingCharacterType } : c)
     }));
     setEditingCharacterId(null);
   };
@@ -1292,15 +1301,20 @@ function App() {
                     />
                     {editingSkillId === skill.id ? (
                       <div style={{display:'flex', flexDirection: 'column', gap:'0.5rem', flex: 1}}>
-                        <input
-                          type="text"
-                          className="input-medieval"
-                          style={{width: '100%', padding: '0.3rem 0.5rem', fontSize: '0.95rem'}}
-                          value={editingSkillName}
-                          placeholder="기술 명칭"
-                          onChange={e => setEditingSkillName(e.target.value)}
-                          autoFocus
-                        />
+                        <div style={{display: 'flex', alignItems: 'center', gap: '0.5rem'}}>
+                          <label style={{display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.85rem', color: 'var(--text-color)', cursor: 'pointer', whiteSpace: 'nowrap'}}>
+                            <input type="checkbox" checked={editingSkillIsAncient} onChange={e => setEditingSkillIsAncient(e.target.checked)} style={{cursor: 'pointer'}} /> 고대 기술
+                          </label>
+                          <input
+                            type="text"
+                            className="input-medieval"
+                            style={{flex: 1, padding: '0.3rem 0.5rem', fontSize: '0.95rem'}}
+                            value={editingSkillName}
+                            placeholder="기술 명칭"
+                            onChange={e => setEditingSkillName(e.target.value)}
+                            autoFocus
+                          />
+                        </div>
                         <textarea
                           className="input-medieval"
                           style={{width: '100%', minHeight: '60px', padding: '0.4rem 0.5rem', fontSize: '0.9rem', lineHeight: '1.4', resize: 'vertical'}}
@@ -1400,15 +1414,20 @@ function App() {
                     </span>
                     {editingResourceId === res.id ? (
                       <div style={{display:'flex', flexDirection: 'column', gap:'0.5rem', flex: 1, marginTop:'0.2rem'}}>
-                        <input
-                          type="text"
-                          className="input-medieval"
-                          style={{width: '100%', padding: '0.3rem 0.5rem', fontSize: '0.95rem'}}
-                          value={editingResourceName}
-                          placeholder="자원 명칭"
-                          onChange={e => setEditingResourceName(e.target.value)}
-                          autoFocus
-                        />
+                        <div style={{display: 'flex', alignItems: 'center', gap: '0.5rem'}}>
+                          <label style={{display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.85rem', color: 'var(--text-color)', cursor: 'pointer', whiteSpace: 'nowrap'}}>
+                            <input type="checkbox" checked={editingResourceIsStationary} onChange={e => setEditingResourceIsStationary(e.target.checked)} style={{cursor: 'pointer'}} /> 고정 자원
+                          </label>
+                          <input
+                            type="text"
+                            className="input-medieval"
+                            style={{flex: 1, padding: '0.3rem 0.5rem', fontSize: '0.95rem'}}
+                            value={editingResourceName}
+                            placeholder="자원 명칭"
+                            onChange={e => setEditingResourceName(e.target.value)}
+                            autoFocus
+                          />
+                        </div>
                         <textarea
                           className="input-medieval"
                           style={{width: '100%', minHeight: '60px', padding: '0.4rem 0.5rem', fontSize: '0.9rem', lineHeight: '1.4', resize: 'vertical'}}
@@ -1513,15 +1532,26 @@ function App() {
                     </span>
                     {editingCharacterId === char.id ? (
                       <div style={{display:'flex', flexDirection: 'column', gap:'0.5rem', flex: 1, marginTop:'0.2rem'}}>
-                        <input
-                          type="text"
-                          className="input-medieval"
-                          style={{width: '100%', padding: '0.3rem 0.5rem', fontSize: '0.95rem'}}
-                          value={editingCharacterName}
-                          placeholder="이름"
-                          onChange={e => setEditingCharacterName(e.target.value)}
-                          autoFocus
-                        />
+                        <div style={{display: 'flex', alignItems: 'center', gap: '0.5rem'}}>
+                          <select 
+                            className="input-medieval" 
+                            style={{width: 'auto', padding: '0.2rem', fontSize: '0.85rem'}}
+                            value={editingCharacterType}
+                            onChange={e => setEditingCharacterType(e.target.value as 'mortal'|'immortal')}
+                          >
+                            <option value="mortal">필멸자(Mortal)</option>
+                            <option value="immortal">불멸자(Immortal)</option>
+                          </select>
+                          <input
+                            type="text"
+                            className="input-medieval"
+                            style={{flex: 1, padding: '0.3rem 0.5rem', fontSize: '0.95rem'}}
+                            value={editingCharacterName}
+                            placeholder="이름"
+                            onChange={e => setEditingCharacterName(e.target.value)}
+                            autoFocus
+                          />
+                        </div>
                         <textarea
                           className="input-medieval"
                           style={{width: '100%', minHeight: '60px', padding: '0.4rem 0.5rem', fontSize: '0.9rem', lineHeight: '1.4', resize: 'vertical'}}
