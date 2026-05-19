@@ -51,6 +51,10 @@ const IconReset = () => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
 );
 
+const IconEdit = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 1 1 3 3L12 15l-4 1 1-4z"/></svg>
+);
+
 const GoogleIcon = () => (
   <svg width="14" height="14" viewBox="0 0 24 24" style={{ marginRight: '4px' }}>
     <path fill="#EA4335" d="M12.24 10.285V14.4h6.887c-.648 2.41-2.519 4.114-5.136 4.114-3.51 0-6.357-2.847-6.357-6.357s2.847-6.357 6.357-6.357c1.623 0 3.096.61 4.237 1.62l3.056-3.056C19.223 2.507 15.938 1 12.24 1 6.033 1 1 6.033 1 12.24s5.033 11.24 11.24 11.24c5.897 0 10.867-4.148 10.867-11.24 0-.568-.06-1.125-.174-1.668H12.24z"/>
@@ -104,6 +108,10 @@ function App() {
   const [newCharacterName, setNewCharacterName] = useState('');
   const [newCharacterType, setNewCharacterType] = useState<'mortal' | 'immortal'>('mortal');
   const [newMarkDesc, setNewMarkDesc] = useState('');
+
+  // Journal editing states
+  const [editingJournalId, setEditingJournalId] = useState<string | null>(null);
+  const [editingJournalText, setEditingJournalText] = useState<string>('');
 
   const [user, setUser] = useState<User | null>(null);
 
@@ -574,6 +582,41 @@ function App() {
     }));
   };
 
+  // 6. Journal Entries
+  const handleStartEditJournal = (id: string, text: string) => {
+    setEditingJournalId(id);
+    setEditingJournalText(text);
+  };
+
+  const handleCancelEditJournal = () => {
+    setEditingJournalId(null);
+    setEditingJournalText('');
+  };
+
+  const handleSaveEditJournal = (id: string) => {
+    if (!editingJournalText.trim()) {
+      alert('일지 내용을 입력해주세요.');
+      return;
+    }
+    setGameState(prev => ({
+      ...prev,
+      journal: prev.journal.map(item =>
+        item.id === id ? { ...item, textContent: editingJournalText.trim() } : item
+      )
+    }));
+    setEditingJournalId(null);
+    setEditingJournalText('');
+  };
+
+  const handleDeleteJournalEntry = (id: string) => {
+    if (window.confirm('이 일지 기록을 영원히 삭제하시겠습니까?')) {
+      setGameState(prev => ({
+        ...prev,
+        journal: prev.journal.filter(item => item.id !== id)
+      }));
+    }
+  };
+
 
   // --- Setup Screen ---
   if (isSetupMode) {
@@ -855,9 +898,69 @@ function App() {
                     <div className="timeline-content">
                       <div className="timeline-meta">
                         <span>프롬프트 #{item.promptId} (방문 {item.visitCount}회)</span>
-                        <span>🎲 {item.rollText}</span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                          <span>🎲 {item.rollText}</span>
+                          {editingJournalId !== item.id && (
+                            <div style={{ display: 'inline-flex', gap: '0.2rem', marginLeft: '0.5rem' }}>
+                              <button
+                                className="icon-btn"
+                                title="수정"
+                                style={{ padding: '0.1rem', color: 'var(--gold-dark)' }}
+                                onClick={() => handleStartEditJournal(item.id, item.textContent)}
+                              >
+                                <IconEdit />
+                              </button>
+                              <button
+                                className="icon-btn delete"
+                                title="삭제"
+                                style={{ padding: '0.1rem' }}
+                                onClick={() => handleDeleteJournalEntry(item.id)}
+                              >
+                                <IconTrash />
+                              </button>
+                            </div>
+                          )}
+                        </div>
                       </div>
-                      <p style={{fontSize: '0.95rem', whiteSpace: 'pre-line'}}>{item.textContent}</p>
+                      {editingJournalId === item.id ? (
+                        <div style={{ marginTop: '0.5rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                          <textarea
+                            className="input-medieval"
+                            style={{
+                              width: '100%',
+                              minHeight: '80px',
+                              fontSize: '0.95rem',
+                              padding: '0.5rem',
+                              backgroundColor: 'rgba(255, 255, 255, 0.7)',
+                              color: '#2b2519',
+                              border: '1px solid var(--gold-accent)',
+                              borderRadius: '3px',
+                              resize: 'vertical',
+                              fontFamily: 'inherit'
+                            }}
+                            value={editingJournalText}
+                            onChange={e => setEditingJournalText(e.target.value)}
+                          />
+                          <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
+                            <button
+                              className="btn-gold-outline"
+                              style={{ padding: '0.2rem 0.6rem', fontSize: '0.8rem' }}
+                              onClick={handleCancelEditJournal}
+                            >
+                              취소
+                            </button>
+                            <button
+                              className="btn-medieval"
+                              style={{ padding: '0.2rem 0.6rem', fontSize: '0.8rem', minHeight: 'auto' }}
+                              onClick={() => handleSaveEditJournal(item.id)}
+                            >
+                              저장
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <p style={{fontSize: '0.95rem', whiteSpace: 'pre-line'}}>{item.textContent}</p>
+                      )}
                     </div>
                   </div>
                 ))}
