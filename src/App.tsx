@@ -91,10 +91,8 @@ const initialGameState: GameState = {
 };
 
 function App() {
-  const [isSetupMode, setIsSetupMode] = useState(true);
-  const [setupTab, setSetupTab] = useState<'basic' | 'skills' | 'resources' | 'characters' | 'marks'>('basic');
   const [gameState, setGameState] = useState<GameState>(initialGameState);
-  const [activeTab, setActiveTab] = useState<'memories' | 'skills' | 'resources' | 'characters' | 'marks' | 'diary' | 'manual'>('memories');
+  const [activeTab, setActiveTab] = useState<'setup' | 'memories' | 'skills' | 'resources' | 'characters' | 'marks' | 'diary' | 'manual'>('setup');
   
   // Dice and Action states
   const [d10Val, setD10Val] = useState<number | null>(null);
@@ -131,13 +129,13 @@ function App() {
         if (saved) {
           try {
             setGameState(JSON.parse(saved));
-            setIsSetupMode(false);
+            if (!saved || !JSON.parse(saved).characterName) setActiveTab('setup'); else setActiveTab('memories');
           } catch (e) {
             console.error('Failed to load local save on logout', e);
           }
         } else {
           setGameState(initialGameState);
-          setIsSetupMode(true);
+          setActiveTab('setup');
         }
       }
     });
@@ -159,7 +157,7 @@ function App() {
             }
             const parsed = JSON.parse(data.gameState);
             setGameState(parsed);
-            setIsSetupMode(false);
+            if (!saved || !JSON.parse(saved).characterName) setActiveTab('setup'); else setActiveTab('memories');
           } catch (e) {
             console.error("Failed to parse synced state", e);
           }
@@ -193,7 +191,7 @@ function App() {
         try {
           const parsed = JSON.parse(saved);
           setGameState(parsed);
-          setIsSetupMode(false);
+          if (!saved || !JSON.parse(saved).characterName) setActiveTab('setup'); else setActiveTab('memories');
         } catch (e) {
           console.error('Failed to load save', e);
         }
@@ -203,14 +201,14 @@ function App() {
 
   // Save state to LocalStorage on any change
   useEffect(() => {
-    if (!isSetupMode) {
+    if (activeTab !== 'setup') {
       localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(gameState));
     }
-  }, [gameState, isSetupMode]);
+  }, [gameState]);
 
   // Save state to Firebase on any change (debounced 1s)
   useEffect(() => {
-    if (user && db && !isSetupMode && gameState.characterName) {
+    if (user && db && gameState.characterName) {
       const timer = setTimeout(() => {
         const docRef = doc(db as any, 'vampire_saves', user.uid);
         setDoc(docRef, { gameState: JSON.stringify(gameState) }, { merge: true })
@@ -218,7 +216,7 @@ function App() {
       }, 1000); // 1-second debounce
       return () => clearTimeout(timer);
     }
-  }, [gameState, user, isSetupMode]);
+  }, [gameState, user]);
 
 
   // Get active prompt text based on prompt ID and visit count
@@ -263,7 +261,7 @@ function App() {
       }
       localStorage.removeItem(LOCAL_STORAGE_KEY);
       setGameState(initialGameState);
-      setIsSetupMode(true);
+      setActiveTab('setup');
       setCurrentJournalText('');
       setD10Val(null);
       setD6Val(null);
@@ -299,7 +297,6 @@ function App() {
     if (e) e.preventDefault();
     if (!gameState.characterName.trim()) {
       alert('흡혈귀의 이름을 먼저 기입해 주십시오.');
-      setSetupTab('basic');
       return;
     }
     // Pre-populate starting sheet placeholders so user can edit them directly
@@ -334,10 +331,11 @@ function App() {
       skills: prev.skills.length > 0 ? prev.skills : startingSkills,
       resources: prev.resources.length > 0 ? prev.resources : startingResources,
       characters: prev.characters.length > 0 ? prev.characters : startingCharacters,
-      memories: startingMemories
+      memories: prev.memories[0].experiences.length > 0 ? prev.memories : startingMemories
     }));
+    setActiveTab('memories');
     
-    setIsSetupMode(false);
+    if (!saved || !JSON.parse(saved).characterName) setActiveTab('setup'); else setActiveTab('memories');
   };
 
   // Roll Dice Logic (1d10 - 1d6)
@@ -657,281 +655,6 @@ function App() {
   };
 
 
-  // --- Setup Screen ---
-  if (isSetupMode) {
-    return (
-      <div className="app-container setup-screen">
-        <div className="parchment-card">
-          <div className="app-header">
-            <h1 className="app-title">천년 동안 살아온 흡혈귀</h1>
-            <p className="app-subtitle">Thousand Year Old Vampire Companion</p>
-          </div>
-
-          {/* Cloud Sync Integration Segment */}
-          <div style={{
-            margin: '0 0 1.5rem 0',
-            padding: '1rem',
-            backgroundColor: 'rgba(143, 117, 54, 0.08)',
-            border: '1px dashed var(--gold-accent)',
-            borderRadius: '4px',
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            gap: '0.8rem'
-          }}>
-            {user ? (
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.4rem', width: '100%' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--crimson-dark)', fontWeight: 'bold' }}>
-                  <span style={{ display: 'inline-block', width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#27ae60', boxShadow: '0 0 8px #27ae60' }}></span>
-                  <span>클라우드 동기화 활성화됨: {user.displayName}</span>
-                </div>
-                <p style={{ fontSize: '0.85rem', color: 'var(--text-light)', textAlign: 'center' }}>
-                  구글 계정에 연결되었습니다. 클라우드에 세이브 데이터가 있는 경우 자동으로 불러옵니다.
-                </p>
-                <button type="button" className="btn-gold-outline" style={{ fontSize: '0.8rem', padding: '0.3rem 0.8rem' }} onClick={handleLogout}>
-                  로그아웃
-                </button>
-              </div>
-            ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.4rem', width: '100%' }}>
-                <p style={{ fontSize: '0.9rem', color: 'var(--text-light)', textAlign: 'center' }}>
-                  여러 기기 간 연동을 원하시면 구글 계정으로 로그인해 여정 데이터를 동기화하세요.
-                </p>
-                <button type="button" className="btn-medieval" style={{ fontSize: '0.9rem', padding: '0.5rem 1.2rem', display: 'flex', alignItems: 'center', gap: '0.5rem', backgroundColor: '#fff', color: '#2b2519', border: '1.5px solid var(--gold-accent)' }} onClick={handleLogin}>
-                  <GoogleIcon /> Google 계정으로 연동하기
-                </button>
-              </div>
-            )}
-          </div>
-          
-          <div className="setup-tabs" style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.5rem', flexWrap: 'wrap', justifyContent: 'center' }}>
-            <button type="button" className={`tab-btn ${setupTab === 'basic' ? 'active' : ''}`} onClick={() => setSetupTab('basic')}>1. 기본 정보</button>
-            <button type="button" className={`tab-btn ${setupTab === 'skills' ? 'active' : ''}`} onClick={() => setSetupTab('skills')}>2. 기술 (3개)</button>
-            <button type="button" className={`tab-btn ${setupTab === 'resources' ? 'active' : ''}`} onClick={() => setSetupTab('resources')}>3. 자원 (3개)</button>
-            <button type="button" className={`tab-btn ${setupTab === 'characters' ? 'active' : ''}`} onClick={() => setSetupTab('characters')}>4. 인물 (5명)</button>
-            <button type="button" className={`tab-btn ${setupTab === 'marks' ? 'active' : ''}`} onClick={() => setSetupTab('marks')}>5. 표식 (1개)</button>
-          </div>
-          
-          <div className="setup-content" style={{ minHeight: '300px' }}>
-            {setupTab === 'basic' && (
-              <div>
-                <div style={{marginBottom: '1.5rem', padding: '1rem', backgroundColor: 'rgba(143,117,54,0.1)', border: '1px solid var(--gold-dark)', borderRadius: '4px'}}>
-                  <p style={{fontSize: '0.95rem', color: 'var(--text-color)', lineHeight: '1.6', whiteSpace: 'pre-line'}}>
-                    <strong>[ 천년 동안 살아온 흡혈귀 - 초기 설정 ]</strong>
-                    당신은 필멸의 삶을 등지고 영겁의 어둠 속으로 들어선 존재입니다. 피의 저주를 짊어지기 전, 당신이 누구였으며 어떤 상태로 흡혈귀가 되었는지 그 기원을 기록하십시오.
-                  </p>
-                </div>
-                
-                <div className="setup-group">
-                  <label>흡혈귀의 이름</label>
-                  <input 
-                    type="text" 
-                    className="input-medieval" 
-                    placeholder="예: 로데릭 반 카르슈타인, 발렌티나..."
-                    value={gameState.characterName}
-                    onChange={e => setGameState({...gameState, characterName: e.target.value})}
-                  />
-                </div>
-                <div className="setup-group">
-                  <label>기원 (어떻게 흡혈귀가 되었는가?)</label>
-                  <textarea 
-                    className="input-medieval" 
-                    style={{minHeight: '100px', resize:'vertical'}}
-                    placeholder="예: 흑사병이 돌던 해, 뒷골목에서 만난 의문의 귀족에 물려 밤을 헤매게 되었다..."
-                    value={gameState.vampireOrigin}
-                    onChange={e => setGameState({...gameState, vampireOrigin: e.target.value})}
-                  />
-                </div>
-                <div style={{textAlign: 'right', marginTop: '1rem'}}>
-                  <button type="button" className="btn-medieval" onClick={() => setSetupTab('skills')}>다음 단계 ➔</button>
-                </div>
-              </div>
-            )}
-
-            {setupTab === 'skills' && (
-              <div>
-                <div style={{marginBottom: '1.5rem', padding: '1rem', backgroundColor: 'rgba(143,117,54,0.1)', border: '1px solid var(--gold-dark)', borderRadius: '4px'}}>
-                  <p style={{fontSize: '0.95rem', color: 'var(--text-color)', lineHeight: '1.6', whiteSpace: 'pre-line'}}>
-                    <strong>[ 기술 (Skills) - 3가지 창조 ]</strong>
-                    당신이 필멸자 시절부터 익혔거나, 흡혈귀가 되며 얻게 된 <strong>기술 3가지</strong>를 창조하십시오.
-                    이 기술들은 훗날 특정한 프롬프트를 해결하거나 위기를 모면할 때 소비(체크)될 수 있습니다.
-                    <span style={{color: 'var(--text-light)', fontSize: '0.85rem'}}>예: 승마, 야수 교감, 왕실 예법, 사교계의 매력, 검술 등</span>
-                  </p>
-                </div>
-                <div className="add-form">
-                  <input 
-                    type="text" 
-                    className="input-medieval" 
-                    placeholder="새 기술 입력 후 엔터 혹은 추가..."
-                    value={newSkillName}
-                    onChange={e => setNewSkillName(e.target.value)}
-                    onKeyDown={e => e.key === 'Enter' && handleAddSkill()}
-                  />
-                  <button type="button" className="btn-medieval" onClick={handleAddSkill} style={{padding:'0.5rem'}}>
-                    <IconPlus />
-                  </button>
-                </div>
-                <div className="item-grid" style={{marginTop: '1rem'}}>
-                  {gameState.skills.map(skill => (
-                    <div key={skill.id} className="item-card">
-                      <span style={{fontWeight:'500'}}>{skill.name}</span>
-                      <button type="button" className="icon-btn delete" onClick={() => handleDeleteSkill(skill.id)}>
-                        <IconTrash />
-                      </button>
-                    </div>
-                  ))}
-                  {gameState.skills.length === 0 && <p style={{textAlign:'center', color:'var(--text-light)', width:'100%'}}>아직 추가된 기술이 없습니다.</p>}
-                </div>
-                <div style={{display: 'flex', justifyContent: 'space-between', marginTop: '1.5rem'}}>
-                  <button type="button" className="btn-gold-outline" onClick={() => setSetupTab('basic')}>⬅ 이전</button>
-                  <button type="button" className="btn-medieval" onClick={() => setSetupTab('resources')}>다음 단계 ➔</button>
-                </div>
-              </div>
-            )}
-
-            {setupTab === 'resources' && (
-              <div>
-                <div style={{marginBottom: '1.5rem', padding: '1rem', backgroundColor: 'rgba(143,117,54,0.1)', border: '1px solid var(--gold-dark)', borderRadius: '4px'}}>
-                  <p style={{fontSize: '0.95rem', color: 'var(--text-color)', lineHeight: '1.6', whiteSpace: 'pre-line'}}>
-                    <strong>[ 자원 (Resources) - 3가지 창조 ]</strong>
-                    물리적인 재산, 가보, 은신처 등 당신이 보유한 <strong>자원 3가지</strong>를 창조하십시오.
-                    자원은 이야기 속에서 잃어버리거나 다른 무언가를 얻기 위해 영구히 소비될 수 있습니다.
-                    <span style={{color: 'var(--text-light)', fontSize: '0.85rem'}}>예: 금화 주머니, 조상의 저택, 낡은 마차, 기사단장의 검 등</span>
-                  </p>
-                </div>
-                <div className="add-form">
-                  <input 
-                    type="text" 
-                    className="input-medieval" 
-                    placeholder="새 자원 입력 후 추가..."
-                    value={newResourceName}
-                    onChange={e => setNewResourceName(e.target.value)}
-                    onKeyDown={e => e.key === 'Enter' && handleAddResource()}
-                  />
-                  <button type="button" className="btn-medieval" onClick={handleAddResource} style={{padding:'0.5rem'}}>
-                    <IconPlus />
-                  </button>
-                </div>
-                <div className="item-grid" style={{marginTop: '1rem'}}>
-                  {gameState.resources.map(res => (
-                    <div key={res.id} className="item-card">
-                      <span style={{fontWeight:'500'}}>{res.name}</span>
-                      <button type="button" className="icon-btn delete" onClick={() => handleDeleteResource(res.id)}>
-                        <IconTrash />
-                      </button>
-                    </div>
-                  ))}
-                  {gameState.resources.length === 0 && <p style={{textAlign:'center', color:'var(--text-light)', width:'100%'}}>아직 추가된 자원이 없습니다.</p>}
-                </div>
-                <div style={{display: 'flex', justifyContent: 'space-between', marginTop: '1.5rem'}}>
-                  <button type="button" className="btn-gold-outline" onClick={() => setSetupTab('skills')}>⬅ 이전</button>
-                  <button type="button" className="btn-medieval" onClick={() => setSetupTab('characters')}>다음 단계 ➔</button>
-                </div>
-              </div>
-            )}
-
-            {setupTab === 'characters' && (
-              <div>
-                <div style={{marginBottom: '1.5rem', padding: '1rem', backgroundColor: 'rgba(143,117,54,0.1)', border: '1px solid var(--gold-dark)', borderRadius: '4px'}}>
-                  <p style={{fontSize: '0.95rem', color: 'var(--text-color)', lineHeight: '1.6', whiteSpace: 'pre-line'}}>
-                    <strong>[ 인물 (Characters) - 5명 창조 ]</strong>
-                    당신과 서사가 깊게 얽혀 있는 <strong>등장인물 5명</strong>을 창조하십시오.
-                    필멸자(Mortal)는 세월이 흐르면 늙어 죽지만, 불멸자(Immortal)는 영원히 존재합니다.
-                    <span style={{color: 'var(--text-light)', fontSize: '0.85rem'}}>예: 안나 (충직한 하녀 - 필멸자), 드라큘라 (나를 문 자 - 불멸자)</span>
-                  </p>
-                </div>
-                <div className="add-form" style={{flexDirection: 'column', gap: '0.5rem', alignItems: 'stretch'}}>
-                  <div style={{display: 'flex', gap: '0.5rem', alignItems: 'center'}}>
-                    <select 
-                      className="input-medieval" 
-                      style={{width: 'auto', padding: '0.4rem'}}
-                      value={newCharacterType}
-                      onChange={e => setNewCharacterType(e.target.value as 'mortal'|'immortal')}
-                    >
-                      <option value="mortal">필멸자(Mortal)</option>
-                      <option value="immortal">불멸자(Immortal)</option>
-                    </select>
-                    <input 
-                      type="text" 
-                      className="input-medieval" 
-                      style={{flex: 1}}
-                      placeholder="이름 및 관계 (예: 그레고르 신부)"
-                      value={newCharacterName}
-                      onChange={e => setNewCharacterName(e.target.value)}
-                      onKeyDown={e => e.key === 'Enter' && handleAddCharacter()}
-                    />
-                    <button type="button" className="btn-medieval" onClick={handleAddCharacter} style={{padding:'0.5rem'}}>
-                      <IconPlus />
-                    </button>
-                  </div>
-                </div>
-                <div className="item-grid" style={{marginTop: '1rem'}}>
-                  {gameState.characters.map(char => (
-                    <div key={char.id} className="item-card" style={{borderColor: char.type === 'immortal' ? 'var(--crimson-primary)' : 'var(--gold-accent)'}}>
-                      <div style={{display:'flex', flexDirection:'column', gap:'0.2rem'}}>
-                        <span style={{fontSize:'0.75rem', fontWeight:'bold', color: char.type==='immortal'?'var(--crimson-primary)':'var(--text-light)'}}>
-                          {char.type === 'immortal' ? '불멸자' : '필멸자'}
-                        </span>
-                        <span style={{fontWeight:'500'}}>{char.name}</span>
-                      </div>
-                      <button type="button" className="icon-btn delete" onClick={() => handleDeleteCharacter(char.id)}>
-                        <IconTrash />
-                      </button>
-                    </div>
-                  ))}
-                  {gameState.characters.length === 0 && <p style={{textAlign:'center', color:'var(--text-light)', width:'100%'}}>아직 추가된 인물이 없습니다.</p>}
-                </div>
-                <div style={{display: 'flex', justifyContent: 'space-between', marginTop: '1.5rem'}}>
-                  <button type="button" className="btn-gold-outline" onClick={() => setSetupTab('resources')}>⬅ 이전</button>
-                  <button type="button" className="btn-medieval" onClick={() => setSetupTab('marks')}>다음 단계 ➔</button>
-                </div>
-              </div>
-            )}
-
-            {setupTab === 'marks' && (
-              <div>
-                <div style={{marginBottom: '1.5rem', padding: '1rem', backgroundColor: 'rgba(143,117,54,0.1)', border: '1px solid var(--gold-dark)', borderRadius: '4px'}}>
-                  <p style={{fontSize: '0.95rem', color: 'var(--text-color)', lineHeight: '1.6', whiteSpace: 'pre-line'}}>
-                    <strong>[ 표식 (Marks) - 1가지 창조 ]</strong>
-                    당신이 흡혈귀가 되면서 신체나 정신에 지워지지 않게 새겨진 기이한 <strong>표식 1가지</strong>를 창조하십시오.
-                    <span style={{color: 'var(--text-light)', fontSize: '0.85rem'}}>예: 태양 아래서 살갗이 탄다, 박쥐로 변할 수 있다, 십자가를 두려워한다 등</span>
-                  </p>
-                </div>
-                <div className="add-form">
-                  <input 
-                    type="text" 
-                    className="input-medieval" 
-                    placeholder="새 표식 추가..."
-                    value={newMarkDesc}
-                    onChange={e => setNewMarkDesc(e.target.value)}
-                    onKeyDown={e => e.key === 'Enter' && handleAddMark()}
-                  />
-                  <button type="button" className="btn-medieval" onClick={handleAddMark} style={{padding:'0.5rem'}}>
-                    <IconPlus />
-                  </button>
-                </div>
-                <div className="item-grid" style={{marginTop: '1rem'}}>
-                  {gameState.marks.map(mark => (
-                    <div key={mark.id} className="item-card" style={{borderStyle:'dashed', borderColor:'var(--crimson-dark)'}}>
-                      <span style={{fontWeight:'500'}}>{mark.description}</span>
-                      <button type="button" className="icon-btn delete" onClick={() => handleDeleteMark(mark.id)}>
-                        <IconTrash />
-                      </button>
-                    </div>
-                  ))}
-                  {gameState.marks.length === 0 && <p style={{textAlign:'center', color:'var(--text-light)', width:'100%'}}>아직 추가된 표식이 없습니다.</p>}
-                </div>
-                <div style={{display: 'flex', justifyContent: 'space-between', marginTop: '1.5rem'}}>
-                  <button type="button" className="btn-gold-outline" onClick={() => setSetupTab('characters')}>⬅ 이전</button>
-                  <button type="button" className="btn-medieval" onClick={handleStartGame} style={{backgroundColor:'var(--crimson-primary)', color:'#fff'}}>연대기 시작하기 ➔</button>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   // --- Game Over Overlay Screen ---
   if (gameState.isGameOver) {
@@ -964,20 +687,21 @@ function App() {
     );
   }
 
-  // --- Main Game UI ---
+  // --- Main Global Layout ---
   return (
     <div className="app-container">
-      {/* Top Header Bar */}
-      <header className="app-header" style={{flexDirection: 'row', justifyContent: 'space-between', width:'100%', paddingBottom:'0.5rem'}}>
+      {/* GLOBAL HEADER */}
+      <header className="app-header" style={{flexDirection: 'row', justifyContent: 'space-between', width:'100%', paddingBottom:'0.5rem', borderBottom: 'none'}}>
         <div style={{textAlign: 'left'}}>
           <h2 style={{fontSize: '1.5rem', color:'var(--crimson-primary)'}} className="gothic-font">천년 동안 살아온 흡혈귀</h2>
-          <span className="english-gothic" style={{fontSize:'1.2rem', color: 'var(--gold-dark)', marginTop: '0.2rem', fontWeight: 400}}>Chronicle of {gameState.characterName}</span>
+          <span className="english-gothic" style={{fontSize:'1.2rem', color: 'var(--gold-dark)', marginTop: '0.2rem', fontWeight: 400}}>
+            {gameState.characterName ? `Chronicle of ${gameState.characterName}` : 'Thousand Year Old Vampire'}
+          </span>
         </div>
         
         <div className="action-btn-group" style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
           {user ? (
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-              {/* Live Sync Status Badge */}
               <div style={{
                 display: 'inline-flex',
                 alignItems: 'center',
@@ -990,14 +714,8 @@ function App() {
                 color: '#27ae60',
                 fontWeight: 'bold'
               }}>
-                <span style={{
-                  width: '6px',
-                  height: '6px',
-                  borderRadius: '50%',
-                  backgroundColor: '#27ae60',
-                  boxShadow: '0 0 6px #27ae60'
-                }}></span>
-                <span>실시간 동기화 중 ({user.displayName})</span>
+                <span style={{width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#27ae60', boxShadow: '0 0 6px #27ae60'}}></span>
+                <span>클라우드 동기화 중 ({user.displayName})</span>
               </div>
               <button className="btn-gold-outline" style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', padding: '0.35rem 0.7rem', fontSize: '0.85rem' }} onClick={handleLogout}>
                 로그아웃
@@ -1008,231 +726,258 @@ function App() {
               <GoogleIcon /> Google 로그인 연동
             </button>
           )}
-
           <button className="btn-gold-outline" style={{display:'flex', alignItems:'center', gap:'0.3rem', padding: '0.35rem 0.7rem', fontSize: '0.85rem'}} onClick={handleResetGame}>
             <IconReset /> 초기화
           </button>
         </div>
       </header>
 
-      <main className="main-grid">
+      {/* GLOBAL TOP NAVIGATION TABS */}
+      <nav className="global-tabs-list" style={{ 
+        display: 'flex', gap: '0.2rem', flexWrap: 'wrap', 
+        marginBottom: '1.5rem', 
+        borderBottom: '2px solid rgba(197, 160, 89, 0.5)', 
+        paddingBottom: '0.5rem',
+        width: '100%'
+      }}>
+        <button className={`tab-btn ${activeTab === 'setup' ? 'active' : ''}`} style={{fontSize: '1rem', padding: '0.6rem 1.2rem'}} onClick={() => setActiveTab('setup')}>기본 정보 (시작)</button>
+        <button className={`tab-btn ${activeTab === 'memories' ? 'active' : ''}`} style={{fontSize: '1rem', padding: '0.6rem 1.2rem'}} onClick={() => setActiveTab('memories')}>기억 & 경험</button>
+        <button className={`tab-btn ${activeTab === 'skills' ? 'active' : ''}`} style={{fontSize: '1rem', padding: '0.6rem 1.2rem'}} onClick={() => setActiveTab('skills')}>기술</button>
+        <button className={`tab-btn ${activeTab === 'resources' ? 'active' : ''}`} style={{fontSize: '1rem', padding: '0.6rem 1.2rem'}} onClick={() => setActiveTab('resources')}>자원</button>
+        <button className={`tab-btn ${activeTab === 'characters' ? 'active' : ''}`} style={{fontSize: '1rem', padding: '0.6rem 1.2rem'}} onClick={() => setActiveTab('characters')}>등장인물</button>
+        <button className={`tab-btn ${activeTab === 'marks' ? 'active' : ''}`} style={{fontSize: '1rem', padding: '0.6rem 1.2rem'}} onClick={() => setActiveTab('marks')}>표식</button>
+        <button className={`tab-btn ${activeTab === 'diary' ? 'active' : ''}`} style={{fontSize: '1rem', padding: '0.6rem 1.2rem'}} onClick={() => setActiveTab('diary')}>일기장 ({gameState.diary.length})</button>
+        <button className={`tab-btn ${activeTab === 'manual' ? 'active' : ''}`} style={{fontSize: '1rem', padding: '0.6rem 1.2rem'}} onClick={() => setActiveTab('manual')}>설명서</button>
+      </nav>
+
+      {/* MAIN CONTENT AREA */}
+      <main className="main-content" style={{ width: '100%' }}>
         
-        {/* LEFT PANEL: Passing of Time & Story Timeline */}
-        <section className="parchment-card prompt-container">
-          <h3 className="section-title gothic-font">
-            <IconScroll /> 시간의 흐름
-          </h3>
-
-          {/* ACTIVE PROMPT VIEWER */}
-          <div className="prompt-display" style={{
-            position: 'relative',
-            borderColor: isAltActive ? 'var(--gold-dark)' : 'rgba(140,21,21,0.2)',
-            boxShadow: isAltActive ? '0 0 15px rgba(143,117,54,0.15)' : 'none'
-          }}>
-            <div className="prompt-header" style={{flexWrap:'wrap', gap:'0.5rem'}}>
-              <div style={{display:'flex', alignItems:'center', gap:'0.5rem'}}>
-                {isAltActive ? (
-                  <span className="prompt-badge" style={{background:'var(--gold-dark)', border:'1px solid #fff'}}>
-                    ✨ 부록 대체 프롬프트: {activeAltPrompt?.category}
-                  </span>
-                ) : (
-                  <span className="prompt-badge">프롬프트 #{activePrompt.id} (P.{activePrompt.page})</span>
-                )}
-                {!isAltActive && (
-                  <span style={{fontSize: '0.8rem', fontWeight:'bold', color: 'var(--gold-dark)'}}>
-                    방문 횟수: {currentVisitCount}회째
-                  </span>
-                )}
-              </div>
-              
-              {/* Alternate Prompt Action buttons */}
-              <div style={{display:'flex', gap:'0.4rem'}}>
-                {isAltActive ? (
-                  <>
-                    <button className="btn-gold-outline" style={{padding:'0.1rem 0.4rem', fontSize:'0.75rem'}} onClick={handleSubstitutePrompt}>
-                      다른 부록 뽑기
-                    </button>
-                    <button className="btn-gold-outline" style={{padding:'0.1rem 0.4rem', fontSize:'0.75rem', borderColor:'var(--crimson-primary)', color:'var(--crimson-primary)'}} onClick={handleRevertPrompt}>
-                      기본으로 복구
-                    </button>
-                  </>
-                ) : (
-                  <button className="btn-gold-outline" style={{padding:'0.1rem 0.4rem', fontSize:'0.75rem', background:'rgba(143,117,54,0.1)'}} onClick={handleSubstitutePrompt} title="오리지널 룰북 부록(Appendix)의 대체 프롬프트 중 하나를 랜덤으로 뽑아 이벤트를 교체합니다.">
-                    ✨ 부록 프롬프트 대체
-                  </button>
-                )}
-              </div>
+        {/* 1. SETUP TAB (기본 정보) */}
+        {activeTab === 'setup' && (
+          <section className="parchment-card" style={{ maxWidth: '800px', margin: '0 auto' }}>
+            <h3 className="section-title gothic-font"><IconBook /> 기본 정보 및 연대기 시작</h3>
+            <div style={{marginBottom: '1.5rem', padding: '1rem', backgroundColor: 'rgba(143,117,54,0.1)', border: '1px solid var(--gold-dark)', borderRadius: '4px'}}>
+              <p style={{fontSize: '0.95rem', color: 'var(--text-color)', lineHeight: '1.6', whiteSpace: 'pre-line'}}>
+                <strong>[ 천년 동안 살아온 흡혈귀 - 초기 설정 ]</strong>
+                당신은 필멸의 삶을 등지고 영겁의 어둠 속으로 들어선 존재입니다. 피의 저주를 짊어지기 전, 당신이 누구였으며 어떤 상태로 흡혈귀가 되었는지 그 기원을 기록하십시오.
+              </p>
             </div>
-            <p className="prompt-body" style={{
-              fontStyle: isAltActive ? 'italic' : 'normal',
-              color: isAltActive ? '#2b2519' : 'inherit'
-            }}>
-              {activePromptText}
-            </p>
-          </div>
-
-          {/* DICE ROLLER & MOVEMENT */}
-          <div className="dice-roller-box">
-            <div className="dice-group" style={{display:'flex', gap:'1rem'}}>
-              <div className={`die d10 ${isRolling ? 'roll-anim' : ''}`} data-type="d10">
-                {d10Val || '?'}
-              </div>
-              <div style={{fontSize: '2rem', alignSelf:'center', color:'var(--text-light)'}}>-</div>
-              <div className={`die d6 ${isRolling ? 'roll-anim' : ''}`} data-type="d6">
-                {d6Val || '?'}
-              </div>
+            
+            <div className="setup-group">
+              <label>흡혈귀의 이름</label>
+              <input 
+                type="text" 
+                className="input-medieval" 
+                placeholder="예: 로데릭 반 카르슈타인, 발렌티나..."
+                value={gameState.characterName}
+                onChange={e => setGameState({...gameState, characterName: e.target.value})}
+              />
             </div>
-
-            <div style={{flex: 1, display:'flex', flexDirection:'column', gap:'0.5rem'}}>
-              <button className="btn-medieval" onClick={handleRollDice} disabled={isRolling} style={{width:'100%'}}>
-                <IconDices /> 주사위 굴리기 & 전진
+            <div className="setup-group">
+              <label>기원 (어떻게 흡혈귀가 되었는가?)</label>
+              <textarea 
+                className="input-medieval" 
+                style={{minHeight: '100px', resize:'vertical'}}
+                placeholder="예: 흑사병이 돌던 해, 뒷골목에서 만난 의문의 귀족에 물려 밤을 헤매게 되었다..."
+                value={gameState.vampireOrigin}
+                onChange={e => setGameState({...gameState, vampireOrigin: e.target.value})}
+              />
+            </div>
+            <div style={{textAlign: 'center', marginTop: '2rem'}}>
+              <button type="button" className="btn-medieval" onClick={handleStartGame} style={{fontSize: '1.1rem', padding: '0.8rem 2rem', backgroundColor: 'var(--crimson-primary)', color: '#fff'}}>
+                연대기 시작하기 ➔
               </button>
-              <div style={{display:'flex', justifyContent:'space-between'}}>
-                <button className="btn-gold-outline" style={{padding:'0.2rem 0.5rem', fontSize:'0.8rem'}} onClick={() => handleManualMove('prev')}>
-                  ← 이전 프롬프트
-                </button>
-                <button className="btn-gold-outline" style={{padding:'0.2rem 0.5rem', fontSize:'0.8rem'}} onClick={() => handleManualMove('next')}>
-                  다음 프롬프트 →
-                </button>
-              </div>
+              <p style={{marginTop: '0.5rem', fontSize: '0.85rem', color: 'var(--text-light)'}}>
+                (이름과 기원을 확정하고, 본격적으로 주사위를 굴려 기억을 기록합니다. 기술, 자원 등은 다른 탭에서 자유롭게 추가하실 수 있습니다.)
+              </p>
             </div>
-          </div>
+          </section>
+        )}
 
-          {/* CURRENT JOURNAL ENTRY */}
-          <div className="journal-editor">
-            <h4 className="gothic-font" style={{fontSize: '1.1rem', display:'flex', alignItems:'center', gap:'0.4rem'}}>
-              <IconFeather /> 연대기 일지 작성
-            </h4>
-            <span style={{fontSize: '0.8rem', color: 'var(--text-light)'}}>현재 사건에 대한 당신의 대응이나 이야기를 적어 보십시오. 주사위를 굴려 다음 프롬프트로 이동할 때 자동으로 연대기에 보관됩니다.</span>
-            <textarea
-              className="journal-textarea"
-              placeholder="여기에 이 프롬프트에서 일어난 당신의 생각이나 이야기를 적으십시오..."
-              value={currentJournalText}
-              onChange={e => setCurrentJournalText(e.target.value)}
-            />
-          </div>
+        {/* 2. MEMORIES TAB (Split Layout) */}
+        {activeTab === 'memories' && (
+          <div className="main-grid">
+            {/* LEFT PANEL: Prompts */}
+            <section className="parchment-card prompt-container">
+              <h3 className="section-title gothic-font">
+                <IconScroll /> 시간의 흐름
+              </h3>
 
-          <div className="ornate-divider"><span>◈ 연대기 타임라인 ◈</span></div>
+              <div className="prompt-display" style={{
+                position: 'relative',
+                borderColor: isAltActive ? 'var(--gold-dark)' : 'rgba(140,21,21,0.2)',
+                boxShadow: isAltActive ? '0 0 15px rgba(143,117,54,0.15)' : 'none'
+              }}>
+                <div className="prompt-header" style={{flexWrap:'wrap', gap:'0.5rem'}}>
+                  <div style={{display:'flex', alignItems:'center', gap:'0.5rem'}}>
+                    {isAltActive ? (
+                      <span className="prompt-badge" style={{background:'var(--gold-dark)', border:'1px solid #fff'}}>
+                        ✨ 부록 대체 프롬프트: {activeAltPrompt?.category}
+                      </span>
+                    ) : (
+                      <span className="prompt-badge">프롬프트 #{activePrompt.id} (P.{activePrompt.page})</span>
+                    )}
+                    {!isAltActive && (
+                      <span style={{fontSize: '0.8rem', fontWeight:'bold', color: 'var(--gold-dark)'}}>
+                        방문 횟수: {currentVisitCount}회째
+                      </span>
+                    )}
+                  </div>
+                  
+                  <div style={{display:'flex', gap:'0.4rem'}}>
+                    {isAltActive ? (
+                      <>
+                        <button className="btn-gold-outline" style={{padding:'0.1rem 0.4rem', fontSize:'0.75rem'}} onClick={handleSubstitutePrompt}>
+                          다른 부록 뽑기
+                        </button>
+                        <button className="btn-gold-outline" style={{padding:'0.1rem 0.4rem', fontSize:'0.75rem', borderColor:'var(--crimson-primary)', color:'var(--crimson-primary)'}} onClick={handleRevertPrompt}>
+                          기본으로 복구
+                        </button>
+                      </>
+                    ) : (
+                      <button className="btn-gold-outline" style={{padding:'0.1rem 0.4rem', fontSize:'0.75rem', background:'rgba(143,117,54,0.1)'}} onClick={handleSubstitutePrompt} title="오리지널 룰북 부록(Appendix)의 대체 프롬프트 중 하나를 랜덤으로 뽑아 이벤트를 교체합니다.">
+                        ✨ 부록 프롬프트 대체
+                      </button>
+                    )}
+                  </div>
+                </div>
+                <p className="prompt-body" style={{
+                  fontStyle: isAltActive ? 'italic' : 'normal',
+                  color: isAltActive ? '#2b2519' : 'inherit'
+                }}>
+                  {activePromptText}
+                </p>
+              </div>
 
-          {/* TIMELINE HISTORY */}
-          <div style={{maxHeight: '400px', overflowY: 'auto', paddingRight:'0.5rem'}}>
-            {gameState.journal.length === 0 ? (
-              <p style={{textAlign:'center', color:'var(--text-light)', fontStyle:'italic'}}>아직 기록된 타임라인이 없습니다. 첫 주사위를 굴려 이야기를 시작하십시오.</p>
-            ) : (
-              <div className="timeline-list">
-                {gameState.journal.map(item => (
-                  <div key={item.id} className="timeline-item">
-                    <div className="timeline-dot"></div>
-                    <div className="timeline-content">
-                      <div className="timeline-meta">
-                        <span>프롬프트 #{item.promptId} (방문 {item.visitCount}회)</span>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                          <span>🎲 {item.rollText}</span>
-                          {editingJournalId !== item.id && (
-                            <div style={{ display: 'inline-flex', gap: '0.2rem', marginLeft: '0.5rem' }}>
-                              <button
-                                className="icon-btn"
-                                title="수정"
-                                style={{ padding: '0.1rem', color: 'var(--gold-dark)' }}
-                                onClick={() => handleStartEditJournal(item.id, item.textContent)}
-                              >
-                                <IconEdit />
-                              </button>
-                              <button
-                                className="icon-btn delete"
-                                title="삭제"
-                                style={{ padding: '0.1rem' }}
-                                onClick={() => handleDeleteJournalEntry(item.id)}
-                              >
-                                <IconTrash />
-                              </button>
+              <div className="dice-roller-box">
+                <div className="dice-group" style={{display:'flex', gap:'1rem'}}>
+                  <div className={`die d10 ${isRolling ? 'roll-anim' : ''}`} data-type="d10">
+                    {d10Val || '?'}
+                  </div>
+                  <div style={{fontSize: '2rem', alignSelf:'center', color:'var(--text-light)'}}>-</div>
+                  <div className={`die d6 ${isRolling ? 'roll-anim' : ''}`} data-type="d6">
+                    {d6Val || '?'}
+                  </div>
+                </div>
+
+                <div style={{flex: 1, display:'flex', flexDirection:'column', gap:'0.5rem'}}>
+                  <button className="btn-medieval" onClick={handleRollDice} disabled={isRolling} style={{width:'100%'}}>
+                    <IconDices /> 주사위 굴리기 & 전진
+                  </button>
+                  <div style={{display:'flex', justifyContent:'space-between'}}>
+                    <button className="btn-gold-outline" style={{padding:'0.2rem 0.5rem', fontSize:'0.8rem'}} onClick={() => handleManualMove('prev')}>
+                      ← 이전 프롬프트
+                    </button>
+                    <button className="btn-gold-outline" style={{padding:'0.2rem 0.5rem', fontSize:'0.8rem'}} onClick={() => handleManualMove('next')}>
+                      다음 프롬프트 →
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <div className="journal-editor">
+                <h4 className="gothic-font" style={{fontSize: '1.1rem', display:'flex', alignItems:'center', gap:'0.4rem'}}>
+                  <IconFeather /> 연대기 일지 작성
+                </h4>
+                <span style={{fontSize: '0.8rem', color: 'var(--text-light)'}}>현재 사건에 대한 당신의 대응이나 이야기를 적어 보십시오. 주사위를 굴려 다음 프롬프트로 이동할 때 자동으로 연대기에 보관됩니다.</span>
+                <textarea
+                  className="journal-textarea"
+                  placeholder="여기에 이 프롬프트에서 일어난 당신의 생각이나 이야기를 적으십시오..."
+                  value={currentJournalText}
+                  onChange={e => setCurrentJournalText(e.target.value)}
+                />
+              </div>
+
+              <div className="ornate-divider"><span>◈ 연대기 타임라인 ◈</span></div>
+
+              <div style={{maxHeight: '400px', overflowY: 'auto', paddingRight:'0.5rem'}}>
+                {gameState.journal.length === 0 ? (
+                  <p style={{textAlign:'center', color:'var(--text-light)', fontStyle:'italic'}}>아직 기록된 타임라인이 없습니다. 첫 주사위를 굴려 이야기를 시작하십시오.</p>
+                ) : (
+                  <div className="timeline-list">
+                    {gameState.journal.map(item => (
+                      <div key={item.id} className="timeline-item">
+                        <div className="timeline-dot"></div>
+                        <div className="timeline-content">
+                          <div className="timeline-meta">
+                            <span>프롬프트 #{item.promptId} (방문 {item.visitCount}회)</span>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                              <span>🎲 {item.rollText}</span>
+                              {editingJournalId !== item.id && (
+                                <div style={{ display: 'inline-flex', gap: '0.2rem', marginLeft: '0.5rem' }}>
+                                  <button
+                                    className="icon-btn"
+                                    title="수정"
+                                    style={{ padding: '0.1rem', color: 'var(--gold-dark)' }}
+                                    onClick={() => handleStartEditJournal(item.id, item.textContent)}
+                                  >
+                                    <IconEdit />
+                                  </button>
+                                  <button
+                                    className="icon-btn delete"
+                                    title="삭제"
+                                    style={{ padding: '0.1rem' }}
+                                    onClick={() => handleDeleteJournalEntry(item.id)}
+                                  >
+                                    <IconTrash />
+                                  </button>
+                                </div>
+                              )}
                             </div>
+                          </div>
+                          {editingJournalId === item.id ? (
+                            <div style={{ marginTop: '0.5rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                              <textarea
+                                className="input-medieval"
+                                style={{
+                                  width: '100%',
+                                  minHeight: '80px',
+                                  fontSize: '0.95rem',
+                                  padding: '0.5rem',
+                                  backgroundColor: 'rgba(255, 255, 255, 0.7)',
+                                  color: '#2b2519',
+                                  border: '1px solid var(--gold-accent)',
+                                  borderRadius: '3px',
+                                  resize: 'vertical',
+                                  fontFamily: 'inherit'
+                                }}
+                                value={editingJournalText}
+                                onChange={e => setEditingJournalText(e.target.value)}
+                              />
+                              <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
+                                <button
+                                  className="btn-gold-outline"
+                                  style={{ padding: '0.2rem 0.6rem', fontSize: '0.8rem' }}
+                                  onClick={handleCancelEditJournal}
+                                >
+                                  취소
+                                </button>
+                                <button
+                                  className="btn-medieval"
+                                  style={{ padding: '0.2rem 0.6rem', fontSize: '0.8rem', minHeight: 'auto' }}
+                                  onClick={() => handleSaveEditJournal(item.id)}
+                                >
+                                  저장
+                                </button>
+                              </div>
+                            </div>
+                          ) : (
+                            <p style={{fontSize: '0.95rem', whiteSpace: 'pre-line'}}>{item.textContent}</p>
                           )}
                         </div>
                       </div>
-                      {editingJournalId === item.id ? (
-                        <div style={{ marginTop: '0.5rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                          <textarea
-                            className="input-medieval"
-                            style={{
-                              width: '100%',
-                              minHeight: '80px',
-                              fontSize: '0.95rem',
-                              padding: '0.5rem',
-                              backgroundColor: 'rgba(255, 255, 255, 0.7)',
-                              color: '#2b2519',
-                              border: '1px solid var(--gold-accent)',
-                              borderRadius: '3px',
-                              resize: 'vertical',
-                              fontFamily: 'inherit'
-                            }}
-                            value={editingJournalText}
-                            onChange={e => setEditingJournalText(e.target.value)}
-                          />
-                          <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
-                            <button
-                              className="btn-gold-outline"
-                              style={{ padding: '0.2rem 0.6rem', fontSize: '0.8rem' }}
-                              onClick={handleCancelEditJournal}
-                            >
-                              취소
-                            </button>
-                            <button
-                              className="btn-medieval"
-                              style={{ padding: '0.2rem 0.6rem', fontSize: '0.8rem', minHeight: 'auto' }}
-                              onClick={() => handleSaveEditJournal(item.id)}
-                            >
-                              저장
-                            </button>
-                          </div>
-                        </div>
-                      ) : (
-                        <p style={{fontSize: '0.95rem', whiteSpace: 'pre-line'}}>{item.textContent}</p>
-                      )}
-                    </div>
+                    ))}
                   </div>
-                ))}
+                )}
               </div>
-            )}
-          </div>
-        </section>
+            </section>
 
-        {/* RIGHT PANEL: Vampire Record Sheet */}
-        <section className="parchment-card">
-          <h3 className="section-title gothic-font">
-            <IconBook /> 흡혈귀 연대 기록
-          </h3>
-
-          {/* TABS */}
-          <nav className="tabs-list">
-            <button className={`tab-btn ${activeTab === 'memories' ? 'active' : ''}`} onClick={() => setActiveTab('memories')}>
-              기억 & 경험
-            </button>
-            <button className={`tab-btn ${activeTab === 'skills' ? 'active' : ''}`} onClick={() => setActiveTab('skills')}>
-              기술
-            </button>
-            <button className={`tab-btn ${activeTab === 'resources' ? 'active' : ''}`} onClick={() => setActiveTab('resources')}>
-              자원
-            </button>
-            <button className={`tab-btn ${activeTab === 'characters' ? 'active' : ''}`} onClick={() => setActiveTab('characters')}>
-              등장인물
-            </button>
-            <button className={`tab-btn ${activeTab === 'marks' ? 'active' : ''}`} onClick={() => setActiveTab('marks')}>
-              표식
-            </button>
-            <button className={`tab-btn ${activeTab === 'diary' ? 'active' : ''}`} onClick={() => setActiveTab('diary')}>
-              일기장 ({gameState.diary.length})
-            </button>
-            <button className={`tab-btn ${activeTab === 'manual' ? 'active' : ''}`} onClick={() => setActiveTab('manual')}>
-              설명서
-            </button>
-          </nav>
-
-          {/* TAB CONTENTS */}
-          <div className="tab-content-wrapper">
-            
-            {/* 1. Memories (5 Fixed Containers) */}
-            {activeTab === 'memories' && (
+            {/* RIGHT PANEL: Memories */}
+            <section className="parchment-card">
+              <h3 className="section-title gothic-font">
+                <IconBook /> 기억 슬롯
+              </h3>
               <div className="memory-list">
                 <p className="small-text" style={{marginBottom: '0.5rem'}}>기억 슬롯은 5개로 고정됩니다. 각 슬롯에는 최대 3개의 경험을 쌓을 수 있습니다. 꽉 찬 경우 슬롯 전체를 일기장으로 이관하고 공간을 비울 수 있습니다.</p>
                 {gameState.memories.map((mem, idx) => (
@@ -1362,238 +1107,258 @@ function App() {
                   </div>
                 ))}
               </div>
-            )}
-
-            {/* 2. Skills */}
-            {activeTab === 'skills' && (
-              <div>
-                <div className="add-form">
-                  <input 
-                    type="text" 
-                    className="input-medieval" 
-                    placeholder="새 기술 추가 (예: 은밀한 이동, 조작...)"
-                    value={newSkillName}
-                    onChange={e => setNewSkillName(e.target.value)}
-                    onKeyDown={e => e.key === 'Enter' && handleAddSkill()}
-                  />
-                  <button className="btn-medieval" onClick={handleAddSkill} style={{padding:'0.5rem'}}>
-                    <IconPlus />
-                  </button>
-                </div>
-                <div className="item-grid">
-                  {gameState.skills.map(skill => (
-                    <div key={skill.id} className={`item-card ${skill.isChecked ? 'checked' : ''}`}>
-                      <div style={{display:'flex', alignItems:'center', gap:'0.75rem'}}>
-                        <input 
-                          type="checkbox" 
-                          checked={skill.isChecked} 
-                          onChange={() => handleToggleSkill(skill.id)}
-                          style={{width:'18px', height:'18px', cursor:'pointer'}}
-                        />
-                        <span style={{fontWeight:'500'}}>{skill.name}</span>
-                      </div>
-                      <button className="icon-btn delete" onClick={() => handleDeleteSkill(skill.id)}>
-                        <IconTrash />
-                      </button>
-                    </div>
-                  ))}
-                  {gameState.skills.length === 0 && <p style={{textAlign:'center', color:'var(--text-light)'}}>아직 보유한 기술이 없습니다.</p>}
-                </div>
-              </div>
-            )}
-
-            {/* 3. Resources */}
-            {activeTab === 'resources' && (
-              <div>
-                <div className="add-form">
-                  <input 
-                    type="text" 
-                    className="input-medieval" 
-                    placeholder="새 자원 추가 (예: 옛 고성, 재화 주머니...)"
-                    value={newResourceName}
-                    onChange={e => setNewResourceName(e.target.value)}
-                    onKeyDown={e => e.key === 'Enter' && handleAddResource()}
-                  />
-                  <button className="btn-medieval" onClick={handleAddResource} style={{padding:'0.5rem'}}>
-                    <IconPlus />
-                  </button>
-                </div>
-                <div className="item-grid">
-                  {gameState.resources.map(res => (
-                    <div key={res.id} className={`item-card ${res.isLost ? 'checked' : ''}`}>
-                      <div style={{display:'flex', alignItems:'center', gap:'0.75rem'}}>
-                        <input 
-                          type="checkbox" 
-                          title="손실 여부"
-                          checked={!!res.isLost} 
-                          onChange={() => handleToggleResourceLost(res.id)}
-                          style={{width:'18px', height:'18px'}}
-                        />
-                        <span style={{color: res.isLost ? 'var(--text-light)' : 'inherit'}}>{res.name}</span>
-                      </div>
-                      <button className="icon-btn delete" onClick={() => handleDeleteResource(res.id)}>
-                        <IconTrash />
-                      </button>
-                    </div>
-                  ))}
-                  {gameState.resources.length === 0 && <p style={{textAlign:'center', color:'var(--text-light)'}}>아직 획득한 자원이 없습니다.</p>}
-                </div>
-              </div>
-            )}
-
-            {/* 4. Characters */}
-            {activeTab === 'characters' && (
-              <div>
-                <div className="add-form">
-                  <input 
-                    type="text" 
-                    className="input-medieval" 
-                    placeholder="인물 이름 및 관계..."
-                    value={newCharacterName}
-                    onChange={e => setNewCharacterName(e.target.value)}
-                    onKeyDown={e => e.key === 'Enter' && handleAddCharacter()}
-                  />
-                  <select className="select-medieval" value={newCharacterType} onChange={e => setNewCharacterType(e.target.value as any)}>
-                    <option value="mortal">필멸자</option>
-                    <option value="immortal">불멸자</option>
-                  </select>
-                  <button className="btn-medieval" onClick={handleAddCharacter} style={{padding:'0.5rem'}}>
-                    <IconPlus />
-                  </button>
-                </div>
-                <div className="item-grid">
-                  {gameState.characters.map(char => (
-                    <div key={char.id} className={`item-card ${char.type} ${!char.isAlive ? 'dead' : ''}`}>
-                      <div style={{display:'flex', alignItems:'center', gap:'0.75rem'}}>
-                        <input 
-                          type="checkbox" 
-                          title="사망 표시"
-                          checked={!char.isAlive} 
-                          onChange={() => handleToggleCharacterDeath(char.id)}
-                          style={{width:'18px', height:'18px'}}
-                        />
-                        <div>
-                          <span style={{fontWeight:'bold'}}>{char.name}</span>
-                          <span style={{
-                            fontSize: '0.75rem', 
-                            marginLeft:'0.5rem', 
-                            background: char.type === 'immortal' ? 'var(--crimson-dark)' : 'var(--text-light)',
-                            color: '#fff',
-                            padding:'0.1rem 0.4rem',
-                            borderRadius:'3px'
-                          }}>
-                            {char.type === 'immortal' ? '불멸자' : '필멸자'}
-                          </span>
-                        </div>
-                      </div>
-                      <button className="icon-btn delete" onClick={() => handleDeleteCharacter(char.id)}>
-                        <IconTrash />
-                      </button>
-                    </div>
-                  ))}
-                  {gameState.characters.length === 0 && <p style={{textAlign:'center', color:'var(--text-light)'}}>아직 기록된 인물이 없습니다.</p>}
-                </div>
-              </div>
-            )}
-
-            {/* 5. Marks */}
-            {activeTab === 'marks' && (
-              <div>
-                <div className="add-form">
-                  <input 
-                    type="text" 
-                    className="input-medieval" 
-                    placeholder="신체적/정신적 표식 묘사... (예: 송곳니, 태양 화상)"
-                    value={newMarkDesc}
-                    onChange={e => setNewMarkDesc(e.target.value)}
-                    onKeyDown={e => e.key === 'Enter' && handleAddMark()}
-                  />
-                  <button className="btn-medieval" onClick={handleAddMark} style={{padding:'0.5rem'}}>
-                    <IconPlus />
-                  </button>
-                </div>
-                <div className="item-grid">
-                  {gameState.marks.map(mark => (
-                    <div key={mark.id} className="item-card">
-                      <span style={{fontWeight:'bold', color:'var(--crimson-dark)'}}>🩸 {mark.description}</span>
-                      <button className="icon-btn delete" onClick={() => handleDeleteMark(mark.id)}>
-                        <IconTrash />
-                      </button>
-                    </div>
-                  ))}
-                  {gameState.marks.length === 0 && <p style={{textAlign:'center', color:'var(--text-light)'}}>아직 획득한 표식이 없습니다.</p>}
-                </div>
-              </div>
-            )}
-
-            {/* 6. Diary (Archived Memories) */}
-            {activeTab === 'diary' && (
-              <div style={{display:'flex', flexDirection:'column', gap:'1rem'}}>
-                <p className="small-text">일기장으로 이관된 기억들의 뭉치입니다. 이 경험들은 더는 수정되지 않으며 고정된 역사가 됩니다.</p>
-                {gameState.diary.map((entry, dIdx) => (
-                  <div key={entry.id} className="memory-box" style={{borderColor: 'var(--gold-dark)', background:'rgba(143,117,54,0.1)'}}>
-                    <div className="memory-header" style={{color:'var(--crimson-dark)'}}>
-                      <span>일기장 묶음 #{gameState.diary.length - dIdx}</span>
-                      <span style={{fontSize:'0.75rem', fontWeight:'normal'}}>{new Date(entry.timestamp).toLocaleDateString('ko-KR')}</span>
-                    </div>
-                    <ul className="experience-list">
-                      {entry.experiences.map(e => (
-                        <li key={e.id} className="experience-item" style={{borderLeftColor: 'var(--crimson-dark)', background:'rgba(255,255,255,0.5)', whiteSpace: 'pre-line'}}>
-                          {e.text}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                ))}
-                {gameState.diary.length === 0 && <p style={{textAlign:'center', color:'var(--text-light)', fontStyle:'italic', padding:'1rem'}}>일기장이 비어 있습니다.</p>}
-              </div>
-            )}
-
-            {/* 7. Instruction Manual (설명서) */}
-            {activeTab === 'manual' && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', fontFamily: '"Eulyoo1945", serif', lineHeight: '1.8' }}>
-                <p className="small-text" style={{ borderBottom: '1px solid rgba(197, 160, 89, 0.25)', paddingBottom: '0.5rem', marginBottom: '0.5rem', fontWeight: 'bold' }}>
-                  📖 천년 동안 살아온 흡혈귀 (Thousand Year Old Vampire) 게임 설명서
-                </p>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
-                  <h4 style={{ color: 'var(--crimson-dark)', fontWeight: 'bold', fontSize: '0.95rem' }}>1. 게임 목표</h4>
-                  <p style={{ fontSize: '0.9rem', color: 'var(--text-color)' }}>
-                    플레이어는 기나긴 천 년의 세월을 살아가는 흡혈귀가 됩니다. 시간이 흐름에 따라 과거의 기억을 상실해가며 비극적인 일화와 웅장한 이야기를 작성하여, 흡혈귀가 최후의 파멸을 맞이할 때까지의 저널 연대기를 완성하는 것이 목표입니다.
-                  </p>
-                </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
-                  <h4 style={{ color: 'var(--crimson-dark)', fontWeight: 'bold', fontSize: '0.95rem' }}>2. 핵심 진행 단계 (Game Loop)</h4>
-                  <ol style={{ fontSize: '0.9rem', color: 'var(--text-color)', paddingLeft: '1.2rem', display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-                    <li><strong>주사위 굴리기 (Roll Dice):</strong> 좌측 상단 패널에서 d10 주사위와 d6 주사위를 굴립니다.</li>
-                    <li><strong>연대기 이동:</strong> 주사위 결과 차이인 <code>d10 결과 - d6 결과</code> 만큼 현재 진행 중인 프롬프트 번호에서 앞 또는 뒤로 이동합니다.</li>
-                    <li><strong>프롬프트 해결:</strong> 이동한 번호에 적힌 서사 사건을 읽고 상상력을 동원해 흡혈귀의 선택과 이야기를 구성합니다.</li>
-                    <li><strong>일지 기록:</strong> 상상한 사건을 바탕으로 타임라인에 한 줄의 상세한 일지를 작성하여 역사로 기록합니다.</li>
-                    <li><strong>상태 반영:</strong> 지시에 따라 자원을 소모하거나 잃고, 소중한 경험을 기억 슬롯에 채우거나 기술을 사용합니다.</li>
-                  </ol>
-                </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
-                  <h4 style={{ color: 'var(--crimson-dark)', fontWeight: 'bold', fontSize: '0.95rem' }}>3. 기억과 경험 (Memories & Experiences)</h4>
-                  <p style={{ fontSize: '0.9rem', color: 'var(--text-color)' }}>
-                    뇌 용량의 한계로 흡혈귀는 오직 <strong>5개의 기억 슬롯</strong>만 가질 수 있습니다. 각 기억 슬롯은 최대 <strong>3개의 세부 경험</strong>을 묶어 담을 수 있습니다. 슬롯이 꽉 찬 상태에서 새 경험이 생기면, 기존 기억 슬롯 중 하나를 통째로 비워 <strong>일기장(Diary)</strong>으로 이관해야 합니다. 이관되지 못하고 밀려난 기억은 영원히 망각 속에 소멸합니다.
-                  </p>
-                </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
-                  <h4 style={{ color: 'var(--crimson-dark)', fontWeight: 'bold', fontSize: '0.95rem' }}>4. 일기장 (Diary)</h4>
-                  <p style={{ fontSize: '0.9rem', color: 'var(--text-color)' }}>
-                    일기장 묶음으로 이관된 경험들은 직접 머릿속에 기억되지는 않지만 책에 물리적으로 영구 박제되어, 나중에 들춰볼 수 있는 역사 기록이 됩니다. 게임 내 일부 잔혹한 사건으로 일기장을 통째로 분실하거나 타버릴 수 있으니 주의하십시오.
-                  </p>
-                </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
-                  <h4 style={{ color: 'var(--crimson-dark)', fontWeight: 'bold', fontSize: '0.95rem' }}>5. 필멸자와 불멸자 & 표식</h4>
-                  <p style={{ fontSize: '0.9rem', color: 'var(--text-color)' }}>
-                    시간의 무자비한 흐름 속에서 흡혈귀가 마주치는 필멸자들은 늙어 죽거나 살해당해 사라집니다. 불멸자들은 기나긴 시간을 함께 살아갑니다. 또한, 세월을 타며 변화하는 흡혈귀의 신체적/정신적 낙인은 <strong>표식(Marks)</strong>으로 새겨집니다.
-                  </p>
-                </div>
-              </div>
-            ) }
-
+            </section>
           </div>
-        </section>
+        )}
+
+        {/* 3. SKILLS TAB (Full Width) */}
+        {activeTab === 'skills' && (
+          <section className="parchment-card" style={{ maxWidth: '800px', margin: '0 auto' }}>
+            <h3 className="section-title gothic-font"><IconBook /> 기술 (Skills)</h3>
+            <div style={{marginBottom: '1.5rem', padding: '1rem', backgroundColor: 'rgba(143,117,54,0.1)', border: '1px solid var(--gold-dark)', borderRadius: '4px'}}>
+              <p style={{fontSize: '0.95rem', color: 'var(--text-color)', lineHeight: '1.6', whiteSpace: 'pre-line'}}>
+                <strong>[ 기술 (Skills) - 초기 3가지 창조 ]</strong>
+                당신이 필멸자 시절부터 익혔거나, 흡혈귀가 되며 얻게 된 <strong>기술</strong>을 창조하십시오.
+                이 기술들은 훗날 특정한 프롬프트를 해결하거나 위기를 모면할 때 체크(소비)될 수 있습니다.
+                <span style={{color: 'var(--text-light)', fontSize: '0.85rem'}}>예: 승마, 야수 교감, 왕실 예법, 사교계의 매력, 검술 등</span>
+              </p>
+            </div>
+            <div className="add-form">
+              <input 
+                type="text" 
+                className="input-medieval" 
+                placeholder="새 기술 추가 (예: 은밀한 이동, 조작...)"
+                value={newSkillName}
+                onChange={e => setNewSkillName(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && handleAddSkill()}
+              />
+              <button className="btn-medieval" onClick={handleAddSkill} style={{padding:'0.5rem'}}>
+                <IconPlus />
+              </button>
+            </div>
+            <div className="item-grid" style={{marginTop: '1.5rem'}}>
+              {gameState.skills.map(skill => (
+                <div key={skill.id} className={`item-card ${skill.isChecked ? 'checked' : ''}`}>
+                  <div style={{display:'flex', alignItems:'center', gap:'0.75rem'}}>
+                    <input 
+                      type="checkbox" 
+                      checked={skill.isChecked} 
+                      onChange={() => handleToggleSkill(skill.id)}
+                      style={{width:'18px', height:'18px', cursor:'pointer'}}
+                    />
+                    <span style={{fontWeight:'500'}}>{skill.name}</span>
+                  </div>
+                  <button className="icon-btn delete" onClick={() => handleDeleteSkill(skill.id)}>
+                    <IconTrash />
+                  </button>
+                </div>
+              ))}
+              {gameState.skills.length === 0 && <p style={{textAlign:'center', color:'var(--text-light)', width:'100%'}}>아직 보유한 기술이 없습니다.</p>}
+            </div>
+          </section>
+        )}
+
+        {/* 4. RESOURCES TAB (Full Width) */}
+        {activeTab === 'resources' && (
+          <section className="parchment-card" style={{ maxWidth: '800px', margin: '0 auto' }}>
+            <h3 className="section-title gothic-font"><IconBook /> 자원 (Resources)</h3>
+            <div style={{marginBottom: '1.5rem', padding: '1rem', backgroundColor: 'rgba(143,117,54,0.1)', border: '1px solid var(--gold-dark)', borderRadius: '4px'}}>
+              <p style={{fontSize: '0.95rem', color: 'var(--text-color)', lineHeight: '1.6', whiteSpace: 'pre-line'}}>
+                <strong>[ 자원 (Resources) - 초기 3가지 창조 ]</strong>
+                물리적인 재산, 가보, 은신처 등 당신이 보유한 <strong>자원</strong>을 창조하십시오.
+                자원은 이야기 속에서 잃어버리거나 다른 무언가를 얻기 위해 영구히 소비될 수 있습니다.
+                <span style={{color: 'var(--text-light)', fontSize: '0.85rem'}}>예: 금화 주머니, 조상의 저택, 낡은 마차, 기사단장의 검 등</span>
+              </p>
+            </div>
+            <div className="add-form">
+              <input 
+                type="text" 
+                className="input-medieval" 
+                placeholder="새 자원 추가 (예: 옛 고성, 재화 주머니...)"
+                value={newResourceName}
+                onChange={e => setNewResourceName(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && handleAddResource()}
+              />
+              <button className="btn-medieval" onClick={handleAddResource} style={{padding:'0.5rem'}}>
+                <IconPlus />
+              </button>
+            </div>
+            <div className="item-grid" style={{marginTop: '1.5rem'}}>
+              {gameState.resources.map(res => (
+                <div key={res.id} className="item-card">
+                  <div style={{display:'flex', flexDirection:'column', gap:'0.2rem'}}>
+                    <span style={{fontSize:'0.75rem', fontWeight:'bold', color: res.isStationary ? 'var(--crimson-primary)' : 'var(--text-light)'}}>
+                      {res.isStationary ? '고정 자원 (Stationary)' : '이동 가능'}
+                    </span>
+                    <span style={{fontWeight:'500'}}>{res.name}</span>
+                  </div>
+                  <button className="icon-btn delete" onClick={() => handleDeleteResource(res.id)}>
+                    <IconTrash />
+                  </button>
+                </div>
+              ))}
+              {gameState.resources.length === 0 && <p style={{textAlign:'center', color:'var(--text-light)', width:'100%'}}>아직 보유한 자원이 없습니다.</p>}
+            </div>
+          </section>
+        )}
+
+        {/* 5. CHARACTERS TAB (Full Width) */}
+        {activeTab === 'characters' && (
+          <section className="parchment-card" style={{ maxWidth: '800px', margin: '0 auto' }}>
+            <h3 className="section-title gothic-font"><IconBook /> 등장인물 (Characters)</h3>
+            <div style={{marginBottom: '1.5rem', padding: '1rem', backgroundColor: 'rgba(143,117,54,0.1)', border: '1px solid var(--gold-dark)', borderRadius: '4px'}}>
+              <p style={{fontSize: '0.95rem', color: 'var(--text-color)', lineHeight: '1.6', whiteSpace: 'pre-line'}}>
+                <strong>[ 인물 (Characters) - 초기 5명 창조 ]</strong>
+                당신과 서사가 깊게 얽혀 있는 <strong>등장인물</strong>을 창조하십시오.
+                필멸자(Mortal)는 세월이 흐르면 늙어 죽지만, 불멸자(Immortal)는 영원히 존재합니다.
+                <span style={{color: 'var(--text-light)', fontSize: '0.85rem'}}>예: 안나 (충직한 하녀 - 필멸자), 드라큘라 (나를 문 자 - 불멸자)</span>
+              </p>
+            </div>
+            <div className="add-form" style={{flexDirection: 'column', gap: '0.5rem', alignItems: 'stretch'}}>
+              <div style={{display: 'flex', gap: '0.5rem', alignItems: 'center'}}>
+                <select 
+                  className="input-medieval" 
+                  style={{width: 'auto', padding: '0.4rem'}}
+                  value={newCharacterType}
+                  onChange={e => setNewCharacterType(e.target.value as 'mortal'|'immortal')}
+                >
+                  <option value="mortal">필멸자(Mortal)</option>
+                  <option value="immortal">불멸자(Immortal)</option>
+                </select>
+                <input 
+                  type="text" 
+                  className="input-medieval" 
+                  style={{flex: 1}}
+                  placeholder="새 인물 추가 (예: 그레고르 신부)"
+                  value={newCharacterName}
+                  onChange={e => setNewCharacterName(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && handleAddCharacter()}
+                />
+                <button className="btn-medieval" onClick={handleAddCharacter} style={{padding:'0.5rem'}}>
+                  <IconPlus />
+                </button>
+              </div>
+            </div>
+            <div className="item-grid" style={{marginTop: '1.5rem'}}>
+              {gameState.characters.map(char => (
+                <div key={char.id} className={`item-card ${!char.isAlive ? 'dead' : ''}`} style={{borderColor: char.type === 'immortal' ? 'var(--crimson-primary)' : 'var(--gold-accent)'}}>
+                  <div style={{display:'flex', flexDirection:'column', gap:'0.2rem'}}>
+                    <span style={{fontSize:'0.75rem', fontWeight:'bold', color: char.type==='immortal'?'var(--crimson-primary)':'var(--text-light)'}}>
+                      {char.type === 'immortal' ? '불멸자' : '필멸자'} {char.isAlive ? '' : '(사망/소실)'}
+                    </span>
+                    <span style={{fontWeight:'500'}}>{char.name}</span>
+                  </div>
+                  <div style={{display:'flex', gap:'0.4rem'}}>
+                    {char.isAlive && (
+                      <button className="icon-btn delete" style={{fontSize:'0.8rem'}} onClick={() => handleKillCharacter(char.id)}>
+                        ☠️
+                      </button>
+                    )}
+                    <button className="icon-btn delete" onClick={() => handleDeleteCharacter(char.id)}>
+                      <IconTrash />
+                    </button>
+                  </div>
+                </div>
+              ))}
+              {gameState.characters.length === 0 && <p style={{textAlign:'center', color:'var(--text-light)', width:'100%'}}>아직 등록된 인물이 없습니다.</p>}
+            </div>
+          </section>
+        )}
+
+        {/* 6. MARKS TAB (Full Width) */}
+        {activeTab === 'marks' && (
+          <section className="parchment-card" style={{ maxWidth: '800px', margin: '0 auto' }}>
+            <h3 className="section-title gothic-font"><IconBook /> 표식 (Marks)</h3>
+            <div style={{marginBottom: '1.5rem', padding: '1rem', backgroundColor: 'rgba(143,117,54,0.1)', border: '1px solid var(--gold-dark)', borderRadius: '4px'}}>
+              <p style={{fontSize: '0.95rem', color: 'var(--text-color)', lineHeight: '1.6', whiteSpace: 'pre-line'}}>
+                <strong>[ 표식 (Marks) - 초기 1가지 창조 ]</strong>
+                당신이 흡혈귀가 되면서 신체나 정신에 지워지지 않게 새겨진 기이한 <strong>표식</strong>을 창조하십시오.
+                <span style={{color: 'var(--text-light)', fontSize: '0.85rem'}}>예: 태양 아래서 살갗이 탄다, 박쥐로 변할 수 있다, 십자가를 두려워한다 등</span>
+              </p>
+            </div>
+            <div className="add-form">
+              <input 
+                type="text" 
+                className="input-medieval" 
+                placeholder="새 표식 추가..."
+                value={newMarkDesc}
+                onChange={e => setNewMarkDesc(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && handleAddMark()}
+              />
+              <button className="btn-medieval" onClick={handleAddMark} style={{padding:'0.5rem'}}>
+                <IconPlus />
+              </button>
+            </div>
+            <div className="item-grid" style={{marginTop: '1.5rem'}}>
+              {gameState.marks.map(mark => (
+                <div key={mark.id} className="item-card" style={{borderStyle:'dashed', borderColor:'var(--crimson-dark)'}}>
+                  <span style={{fontWeight:'500'}}>{mark.description}</span>
+                  <button className="icon-btn delete" onClick={() => handleDeleteMark(mark.id)}>
+                    <IconTrash />
+                  </button>
+                </div>
+              ))}
+              {gameState.marks.length === 0 && <p style={{textAlign:'center', color:'var(--text-light)', width:'100%'}}>아직 새겨진 표식이 없습니다.</p>}
+            </div>
+          </section>
+        )}
+
+        {/* 7. DIARY TAB (Full Width) */}
+        {activeTab === 'diary' && (
+          <section className="parchment-card" style={{ maxWidth: '800px', margin: '0 auto' }}>
+            <h3 className="section-title gothic-font"><IconBook /> 일기장 (Archived Memories)</h3>
+            <div style={{display:'flex', flexDirection:'column', gap:'1rem'}}>
+              <p className="small-text">일기장으로 이관된 기억들의 뭉치입니다. 이 경험들은 더는 수정되지 않으며 고정된 역사가 됩니다.</p>
+              {gameState.diary.map((entry, dIdx) => (
+                <div key={entry.id} className="memory-box" style={{borderColor: 'var(--gold-dark)', background:'rgba(143,117,54,0.1)'}}>
+                  <div className="memory-header" style={{color:'var(--crimson-dark)'}}>
+                    <span>일기장 묶음 #{gameState.diary.length - dIdx}</span>
+                    <span style={{fontSize:'0.75rem', fontWeight:'normal'}}>{new Date(entry.timestamp).toLocaleDateString('ko-KR')}</span>
+                  </div>
+                  <ul className="experience-list">
+                    {entry.experiences.map(e => (
+                      <li key={e.id} className="experience-item" style={{borderLeftColor: 'var(--crimson-dark)', background:'rgba(255,255,255,0.5)', whiteSpace: 'pre-line'}}>
+                        {e.text}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
+              {gameState.diary.length === 0 && <p style={{textAlign:'center', color:'var(--text-light)', fontStyle:'italic', padding:'1rem'}}>일기장이 비어 있습니다.</p>}
+            </div>
+          </section>
+        )}
+
+        {/* 8. MANUAL TAB (Full Width) */}
+        {activeTab === 'manual' && (
+          <section className="parchment-card" style={{ maxWidth: '800px', margin: '0 auto' }}>
+            <h3 className="section-title gothic-font"><IconBook /> 게임 설명서</h3>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', fontFamily: '"Eulyoo1945", serif', lineHeight: '1.8' }}>
+              <p className="small-text" style={{ borderBottom: '1px solid rgba(197, 160, 89, 0.25)', paddingBottom: '0.5rem', marginBottom: '0.5rem', fontWeight: 'bold' }}>
+                📖 천년 동안 살아온 흡혈귀 (Thousand Year Old Vampire) 게임 규칙 요약
+              </p>
+              <div>
+                <strong>1. 게임의 목표와 시간의 흐름</strong><br/>
+                이 게임은 수백 년에 걸친 흡혈귀의 서사를 일기 형태로 기록하는 솔로 TRPG입니다. [시간의 흐름] 패널에서 '주사위 굴리기'를 누르면, `d10 - d6` 연산 값만큼 프롬프트 페이지를 앞으로 이동하며 새로운 사건을 맞이합니다.
+              </div>
+              <div>
+                <strong>2. 기억(Memory)과 일기장(Diary)</strong><br/>
+                흡혈귀의 뇌 용량은 한계가 있습니다. 기억 슬롯은 최대 5개뿐이며, 한 슬롯에 3개의 <strong>경험(Experience)</strong>만 담을 수 있습니다. 기억 슬롯이 가득 차면 오래된 슬롯 하나를 <strong>일기장(Diary)</strong>으로 이관해야만 새로운 기억을 저장할 수 있습니다. 일기장에 들어간 기억은 흡혈귀 본인도 점차 그 진위를 잊게 됩니다.
+              </div>
+              <div>
+                <strong>3. 기술(Skills)과 자원(Resources)의 상실</strong><br/>
+                프롬프트의 지시에 따라 당신은 특정한 기술이나 자원을 <strong>소비(Check)</strong>하거나 잃어버려야 할 수 있습니다. 잃을 자원이 없다면 더 끔찍한 대가를 치러야 할지도 모릅니다.
+              </div>
+              <div>
+                <strong>4. 등장인물(Characters)과 표식(Marks)</strong><br/>
+                새로운 인물이 서사에 합류하거나, 흡혈귀 사냥꾼에게 쫓기게 될 수 있습니다. 뱀파이어로서 몸에 지워지지 않는 새로운 이형의 <strong>표식</strong>이 생겨나기도 합니다. 프롬프트가 지시하는 대로 탭에 이동하여 시트를 갱신하십시오.
+              </div>
+              <p style={{ color: 'var(--crimson-primary)', fontStyle: 'italic', marginTop: '1rem', textAlign: 'center' }}>
+                "모든 것을 잃고, 모든 것을 잊어버리십시오. 그것이 불멸의 대가입니다."
+              </p>
+            </div>
+          </section>
+        )}
       </main>
     </div>
   );
