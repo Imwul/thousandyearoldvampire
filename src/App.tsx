@@ -157,7 +157,7 @@ function App() {
             }
             const parsed = JSON.parse(data.gameState);
             setGameState(parsed);
-            if (!saved || !JSON.parse(saved).characterName) setActiveTab('setup'); else setActiveTab('memories');
+            if (!parsed.characterName) setActiveTab('setup'); else setActiveTab('memories');
           } catch (e) {
             console.error("Failed to parse synced state", e);
           }
@@ -191,7 +191,7 @@ function App() {
         try {
           const parsed = JSON.parse(saved);
           setGameState(parsed);
-          if (!saved || !JSON.parse(saved).characterName) setActiveTab('setup'); else setActiveTab('memories');
+          if (!parsed.characterName) setActiveTab('setup'); else setActiveTab('memories');
         } catch (e) {
           console.error('Failed to load save', e);
         }
@@ -592,6 +592,13 @@ function App() {
     setGameState(prev => ({
       ...prev,
       characters: prev.characters.map(c => c.id === id ? { ...c, isAlive: !c.isAlive } : c)
+    }));
+  };
+
+  const handleKillCharacter = (id: string) => {
+    setGameState(prev => ({
+      ...prev,
+      characters: prev.characters.map(char => char.id === id ? { ...char, isAlive: false } : char)
     }));
   };
 
