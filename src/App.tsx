@@ -93,7 +93,7 @@ const initialGameState: GameState = {
 function App() {
   const [isSetupMode, setIsSetupMode] = useState(true);
   const [gameState, setGameState] = useState<GameState>(initialGameState);
-  const [activeTab, setActiveTab] = useState<'memories' | 'skills' | 'resources' | 'characters' | 'marks' | 'diary'>('memories');
+  const [activeTab, setActiveTab] = useState<'memories' | 'skills' | 'resources' | 'characters' | 'marks' | 'diary' | 'manual'>('memories');
   
   // Dice and Action states
   const [d10Val, setD10Val] = useState<number | null>(null);
@@ -1032,6 +1032,9 @@ function App() {
             <button className={`tab-btn ${activeTab === 'diary' ? 'active' : ''}`} onClick={() => setActiveTab('diary')}>
               일기장 ({gameState.diary.length})
             </button>
+            <button className={`tab-btn ${activeTab === 'manual' ? 'active' : ''}`} onClick={() => setActiveTab('manual')}>
+              설명서
+            </button>
           </nav>
 
           {/* TAB CONTENTS */}
@@ -1331,6 +1334,49 @@ function App() {
                 {gameState.diary.length === 0 && <p style={{textAlign:'center', color:'var(--text-light)', fontStyle:'italic', padding:'1rem'}}>일기장이 비어 있습니다.</p>}
               </div>
             )}
+
+            {/* 7. Instruction Manual (설명서) */}
+            {activeTab === 'manual' && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', fontFamily: '"Eulyoo1945", serif', lineHeight: '1.8' }}>
+                <p className="small-text" style={{ borderBottom: '1px solid rgba(197, 160, 89, 0.25)', paddingBottom: '0.5rem', marginBottom: '0.5rem', fontWeight: 'bold' }}>
+                  📖 천년 동안 살아온 흡혈귀 (Thousand Year Old Vampire) 게임 설명서
+                </p>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+                  <h4 style={{ color: 'var(--crimson-dark)', fontWeight: 'bold', fontSize: '0.95rem' }}>1. 게임 목표</h4>
+                  <p style={{ fontSize: '0.9rem', color: 'var(--text-color)' }}>
+                    플레이어는 기나긴 천 년의 세월을 살아가는 흡혈귀가 됩니다. 시간이 흐름에 따라 과거의 기억을 상실해가며 비극적인 일화와 웅장한 이야기를 작성하여, 흡혈귀가 최후의 파멸을 맞이할 때까지의 저널 연대기를 완성하는 것이 목표입니다.
+                  </p>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+                  <h4 style={{ color: 'var(--crimson-dark)', fontWeight: 'bold', fontSize: '0.95rem' }}>2. 핵심 진행 단계 (Game Loop)</h4>
+                  <ol style={{ fontSize: '0.9rem', color: 'var(--text-color)', paddingLeft: '1.2rem', display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                    <li><strong>주사위 굴리기 (Roll Dice):</strong> 좌측 상단 패널에서 d10 주사위와 d6 주사위를 굴립니다.</li>
+                    <li><strong>연대기 이동:</strong> 주사위 결과 차이인 <code>d10 결과 - d6 결과</code> 만큼 현재 진행 중인 프롬프트 번호에서 앞 또는 뒤로 이동합니다.</li>
+                    <li><strong>프롬프트 해결:</strong> 이동한 번호에 적힌 서사 사건을 읽고 상상력을 동원해 흡혈귀의 선택과 이야기를 구성합니다.</li>
+                    <li><strong>일지 기록:</strong> 상상한 사건을 바탕으로 타임라인에 한 줄의 상세한 일지를 작성하여 역사로 기록합니다.</li>
+                    <li><strong>상태 반영:</strong> 지시에 따라 자원을 소모하거나 잃고, 소중한 경험을 기억 슬롯에 채우거나 기술을 사용합니다.</li>
+                  </ol>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+                  <h4 style={{ color: 'var(--crimson-dark)', fontWeight: 'bold', fontSize: '0.95rem' }}>3. 기억과 경험 (Memories & Experiences)</h4>
+                  <p style={{ fontSize: '0.9rem', color: 'var(--text-color)' }}>
+                    뇌 용량의 한계로 흡혈귀는 오직 <strong>5개의 기억 슬롯</strong>만 가질 수 있습니다. 각 기억 슬롯은 최대 <strong>3개의 세부 경험</strong>을 묶어 담을 수 있습니다. 슬롯이 꽉 찬 상태에서 새 경험이 생기면, 기존 기억 슬롯 중 하나를 통째로 비워 <strong>일기장(Diary)</strong>으로 이관해야 합니다. 이관되지 못하고 밀려난 기억은 영원히 망각 속에 소멸합니다.
+                  </p>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+                  <h4 style={{ color: 'var(--crimson-dark)', fontWeight: 'bold', fontSize: '0.95rem' }}>4. 일기장 (Diary)</h4>
+                  <p style={{ fontSize: '0.9rem', color: 'var(--text-color)' }}>
+                    일기장 묶음으로 이관된 경험들은 직접 머릿속에 기억되지는 않지만 책에 물리적으로 영구 박제되어, 나중에 들춰볼 수 있는 역사 기록이 됩니다. 게임 내 일부 잔혹한 사건으로 일기장을 통째로 분실하거나 타버릴 수 있으니 주의하십시오.
+                  </p>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+                  <h4 style={{ color: 'var(--crimson-dark)', fontWeight: 'bold', fontSize: '0.95rem' }}>5. 필멸자와 불멸자 & 표식</h4>
+                  <p style={{ fontSize: '0.9rem', color: 'var(--text-color)' }}>
+                    시간의 무자비한 흐름 속에서 흡혈귀가 마주치는 필멸자들은 늙어 죽거나 살해당해 사라집니다. 불멸자들은 기나긴 시간을 함께 살아갑니다. 또한, 세월을 타며 변화하는 흡혈귀의 신체적/정신적 낙인은 <strong>표식(Marks)</strong>으로 새겨집니다.
+                  </p>
+                </div>
+              </div>
+            ) }
 
           </div>
         </section>
