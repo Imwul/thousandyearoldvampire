@@ -1063,24 +1063,32 @@ function App() {
                         <li key={exp.id} className="experience-item" style={{ flexDirection: 'column', alignItems: 'stretch' }}>
                           {editingExperienceId === exp.id ? (
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', width: '100%' }}>
-                              <input
-                                type="text"
+                              <textarea
                                 className="input-medieval"
                                 style={{
                                   width: '100%',
-                                  fontSize: '0.9rem',
-                                  padding: '0.3rem 0.5rem',
-                                  backgroundColor: 'rgba(255, 255, 255, 0.8)',
+                                  minHeight: '90px',
+                                  fontSize: '0.95rem',
+                                  lineHeight: '1.6',
+                                  padding: '0.5rem',
+                                  backgroundColor: 'rgba(255, 255, 255, 0.85)',
                                   border: '1px solid var(--gold-accent)',
-                                  borderRadius: '2px',
+                                  borderRadius: '3px',
+                                  resize: 'vertical',
+                                  outline: 'none',
                                   fontFamily: 'inherit'
                                 }}
                                 value={editingExperienceText}
                                 onChange={e => setEditingExperienceText(e.target.value)}
                                 onKeyDown={e => {
-                                  if (e.key === 'Enter') handleSaveEditExperience(mem.id, exp.id);
-                                  if (e.key === 'Escape') handleCancelEditExperience();
+                                  if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+                                    handleSaveEditExperience(mem.id, exp.id);
+                                  }
+                                  if (e.key === 'Escape') {
+                                    handleCancelEditExperience();
+                                  }
                                 }}
+                                placeholder="경험 수정 (Ctrl+Enter 혹은 저장 버튼으로 저장)"
                                 autoFocus
                               />
                               <div style={{ display: 'flex', gap: '0.4rem', justifyContent: 'flex-end' }}>
@@ -1131,14 +1139,29 @@ function App() {
 
                     {mem.experiences.length < 3 && (
                       <div className="add-form" style={{marginBottom:0, marginTop:'0.5rem'}}>
-                        <input 
-                          type="text" 
+                        <textarea 
                           className="input-medieval" 
-                          style={{padding:'0.3rem 0.5rem', fontSize:'0.9rem'}}
-                          placeholder="새 경험 입력..."
+                          style={{
+                            flex: 1,
+                            padding: '0.4rem 0.6rem',
+                            fontSize: '0.9rem',
+                            minHeight: '60px',
+                            resize: 'vertical',
+                            lineHeight: '1.5',
+                            fontFamily: 'inherit',
+                            backgroundColor: 'rgba(255, 255, 255, 0.75)',
+                            border: '1px solid var(--gold-accent)',
+                            borderRadius: '3px',
+                            outline: 'none'
+                          }}
+                          placeholder="새 경험 입력... (Ctrl+Enter 혹은 추가 버튼으로 등록)"
                           value={newExperienceInputs[mem.id] || ''}
                           onChange={e => setNewExperienceInputs({...newExperienceInputs, [mem.id]: e.target.value})}
-                          onKeyDown={e => e.key === 'Enter' && handleAddExperience(mem.id)}
+                          onKeyDown={e => {
+                            if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+                              handleAddExperience(mem.id);
+                            }
+                          }}
                         />
                         <button className="btn-gold-outline" style={{padding:'0.3rem 0.6rem'}} onClick={() => handleAddExperience(mem.id)}>
                           추가
