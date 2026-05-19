@@ -133,6 +133,10 @@ function App() {
   const [editingExperienceId, setEditingExperienceId] = useState<string | null>(null);
   const [editingExperienceText, setEditingExperienceText] = useState<string>('');
 
+  // Diary experience editing states
+  const [editingDiaryExpId, setEditingDiaryExpId] = useState<string | null>(null);
+  const [editingDiaryExpText, setEditingDiaryExpText] = useState<string>('');
+
   // Inline editing states for lists
   const [editingSkillId, setEditingSkillId] = useState<string | null>(null);
   const [editingSkillName, setEditingSkillName] = useState<string>('');
@@ -370,6 +374,7 @@ function App() {
       characters: prev.characters.length > 0 ? prev.characters : startingCharacters,
       memories: prev.memories[0].experiences.length > 0 ? prev.memories : startingMemories
     }));
+    setCurrentJournalText('');
     setActiveTab('memories');
   };
 
@@ -459,6 +464,8 @@ function App() {
       isAltActive: false,
       activeAltIdx: null
     }));
+
+    setCurrentJournalText('');
   };
 
   // --- Game Sheet Management Utilities ---
@@ -558,6 +565,51 @@ function App() {
       memories: prev.memories.map(m => m.id === memoryId ? { ...m, experiences: [] } : m)
     }));
     setActiveTab('diary');
+  };
+
+  // Diary experience editing functions
+  const handleStartEditDiaryExp = (id: string, text: string) => {
+    setEditingDiaryExpId(id);
+    setEditingDiaryExpText(text);
+  };
+  const handleCancelEditDiaryExp = () => {
+    setEditingDiaryExpId(null);
+    setEditingDiaryExpText('');
+  };
+  const handleSaveEditDiaryExp = (entryId: string, expId: string) => {
+    if (!editingDiaryExpText.trim()) return;
+    setGameState(prev => ({
+      ...prev,
+      diary: prev.diary.map(entry => {
+        if (entry.id === entryId) {
+          return {
+            ...entry,
+            experiences: entry.experiences.map(e => e.id === expId ? { ...e, text: editingDiaryExpText.trim() } : e)
+          };
+        }
+        return entry;
+      })
+    }));
+    setEditingDiaryExpId(null);
+    setEditingDiaryExpText('');
+  };
+  const handleDeleteDiaryExp = (entryId: string, expId: string) => {
+    if (!window.confirm('이 일기장 경험을 정말 삭제하시겠습니까?')) return;
+    setGameState(prev => {
+      const updatedDiary = prev.diary.map(entry => {
+        if (entry.id === entryId) {
+          return {
+            ...entry,
+            experiences: entry.experiences.filter(e => e.id !== expId)
+          };
+        }
+        return entry;
+      }).filter(entry => entry.experiences.length > 0);
+      return {
+        ...prev,
+        diary: updatedDiary
+      };
+    });
   };
 
   // 2. Skills
@@ -1254,13 +1306,16 @@ function App() {
         {activeTab === 'skills' && (
           <section className="parchment-card" style={{ maxWidth: '800px', margin: '0 auto' }}>
             <h3 className="section-title gothic-font"><IconBook /> 기술 (Skills)</h3>
-            <div style={{marginBottom: '1.5rem', padding: '1rem', backgroundColor: 'rgba(143,117,54,0.1)', border: '1px solid var(--gold-dark)', borderRadius: '4px'}}>
-              <p style={{fontSize: '0.95rem', color: 'var(--text-color)', lineHeight: '1.6', whiteSpace: 'pre-line'}}>
-                <strong>[ 기술 (Skills) - 초기 3가지 창조 ]</strong>
-                당신이 필멸자 시절부터 익혔거나, 흡혈귀가 되며 얻게 된 <strong>기술</strong>을 창조하십시오.
-                이 기술들은 훗날 특정한 프롬프트를 해결하거나 위기를 모면할 때 체크(소비)될 수 있습니다.
-                <span style={{color: 'var(--text-light)', fontSize: '0.85rem'}}>예: 승마, 야수 교감, 왕실 예법, 사교계의 매력, 검술 등</span>
+            <div style={{marginBottom: '1.5rem', padding: '1.25rem', backgroundColor: 'rgba(143,117,54,0.08)', border: '1px solid var(--gold-dark)', borderRadius: '6px', borderLeft: '4px solid var(--gold-dark)'}}>
+              <p style={{fontSize: '0.95rem', color: 'var(--text-color)', lineHeight: '1.6', margin: 0}}>
+                <strong style={{fontSize: '1.05rem', color: 'var(--crimson-dark)', display: 'block', marginBottom: '0.5rem'}}>⚜️ 기술 (Skills) 관리 & 세부 규칙</strong>
+                당신이 필멸자 시절 연마했거나 뱀파이어가 되며 얻게 된 능력들입니다. 위기를 극복하거나 프롬프트의 지시를 해결할 때 체크(소비)하게 됩니다.
               </p>
+              <ul style={{fontSize: '0.85rem', color: 'var(--text-light)', marginTop: '0.5rem', paddingLeft: '1.2rem', lineHeight: '1.6', marginBlockEnd: 0}}>
+                <li><strong>초기 생성:</strong> 게임 시작 시 <strong>3가지</strong>의 일반 기술을 자유롭게 기입하여 창조합니다.</li>
+                <li><strong>고대 기술(Ancient Skill) 규칙:</strong> 일반 기술은 수백 년의 세월 동안 기억을 잃을 때(기억 이관/삭제) 망각될 수 있습니다. 반면, <strong>고대 기술</strong>은 피의 비전이나 고대의 맹세 등으로 깊이 각인된 초자연적이고 심오한 지식으로, <strong>기억을 잃거나 이관하여도 결코 잊히지 않고 영구히 보존</strong>됩니다.</li>
+                <li><strong>체크(소비):</strong> 기술을 체크하는 것은 기술이 영구 삭제되는 것이 아니며, 이번 장의 위기를 극복하기 위해 해당 능력을 사용했음을 나타냅니다.</li>
+              </ul>
             </div>
             <div className="add-form" style={{display: 'flex', flexDirection: 'column', gap: '0.75rem', padding: '1rem', border: '1px solid var(--gold-dark)', borderRadius: '6px', backgroundColor: 'rgba(255,255,255,0.02)'}}>
               <div style={{display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap'}}>
@@ -1370,13 +1425,16 @@ function App() {
         {activeTab === 'resources' && (
           <section className="parchment-card" style={{ maxWidth: '800px', margin: '0 auto' }}>
             <h3 className="section-title gothic-font"><IconBook /> 자원 (Resources)</h3>
-            <div style={{marginBottom: '1.5rem', padding: '1rem', backgroundColor: 'rgba(143,117,54,0.1)', border: '1px solid var(--gold-dark)', borderRadius: '4px'}}>
-              <p style={{fontSize: '0.95rem', color: 'var(--text-color)', lineHeight: '1.6', whiteSpace: 'pre-line'}}>
-                <strong>[ 자원 (Resources) - 초기 3가지 창조 ]</strong>
-                물리적인 재산, 가보, 은신처 등 당신이 보유한 <strong>자원</strong>을 창조하십시오.
-                자원은 이야기 속에서 잃어버리거나 다른 무언가를 얻기 위해 영구히 소비될 수 있습니다.
-                <span style={{color: 'var(--text-light)', fontSize: '0.85rem'}}>예: 금화 주머니, 조상의 저택, 낡은 마차, 기사단장의 검 등</span>
+            <div style={{marginBottom: '1.5rem', padding: '1.25rem', backgroundColor: 'rgba(143,117,54,0.08)', border: '1px solid var(--gold-dark)', borderRadius: '6px', borderLeft: '4px solid var(--gold-dark)'}}>
+              <p style={{fontSize: '0.95rem', color: 'var(--text-color)', lineHeight: '1.6', margin: 0}}>
+                <strong style={{fontSize: '1.05rem', color: 'var(--crimson-dark)', display: 'block', marginBottom: '0.5rem'}}>⚜️ 자원 (Resources) 관리 & 세부 규칙</strong>
+                물리적 재산, 가보, 은신처 등 당신이 소유한 유용한 물건이나 자산입니다. 위기를 모면하거나 대가를 치를 때 소실될 수 있습니다.
               </p>
+              <ul style={{fontSize: '0.85rem', color: 'var(--text-light)', marginTop: '0.5rem', paddingLeft: '1.2rem', lineHeight: '1.6', marginBlockEnd: 0}}>
+                <li><strong>초기 생성:</strong> 게임 시작 시 <strong>3가지</strong>의 일반 자원을 자유롭게 기입하여 창조합니다.</li>
+                <li><strong>고정 자원(Stationary Resource) 규칙:</strong> 저택, 수도원, 버려진 성곽처럼 물리적으로 이동할 수 없는 자산입니다. 뱀파이어는 흔적을 지우기 위해 고향을 급히 떠나거나 도망쳐야 할 때가 많습니다. **이주하거나 도망쳐야 하는 상황이 닥치면 고정 자원은 가져갈 수 없으므로 강제로 버려지거나 분실 처리**됩니다.</li>
+                <li><strong>소실과 소모:</strong> 프롬프트 지시로 자원을 소모하면 해당 자원을 영구히 체크하거나 목록에서 제거해야 합니다.</li>
+              </ul>
             </div>
             <div className="add-form" style={{display: 'flex', flexDirection: 'column', gap: '0.75rem', padding: '1rem', border: '1px solid var(--gold-dark)', borderRadius: '6px', backgroundColor: 'rgba(255,255,255,0.02)'}}>
               <div style={{display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap'}}>
@@ -1482,13 +1540,16 @@ function App() {
         {activeTab === 'characters' && (
           <section className="parchment-card" style={{ maxWidth: '800px', margin: '0 auto' }}>
             <h3 className="section-title gothic-font"><IconBook /> 등장인물 (Characters)</h3>
-            <div style={{marginBottom: '1.5rem', padding: '1rem', backgroundColor: 'rgba(143,117,54,0.1)', border: '1px solid var(--gold-dark)', borderRadius: '4px'}}>
-              <p style={{fontSize: '0.95rem', color: 'var(--text-color)', lineHeight: '1.6', whiteSpace: 'pre-line'}}>
-                <strong>[ 인물 (Characters) - 초기 5명 창조 ]</strong>
-                당신과 서사가 깊게 얽혀 있는 <strong>등장인물</strong>을 창조하십시오.
-                필멸자(Mortal)는 세월이 흐르면 늙어 죽지만, 불멸자(Immortal)는 영원히 존재합니다.
-                <span style={{color: 'var(--text-light)', fontSize: '0.85rem'}}>예: 안나 (충직한 하녀 - 필멸자), 드라큘라 (나를 문 자 - 불멸자)</span>
+            <div style={{marginBottom: '1.5rem', padding: '1.25rem', backgroundColor: 'rgba(143,117,54,0.08)', border: '1px solid var(--gold-dark)', borderRadius: '6px', borderLeft: '4px solid var(--gold-dark)'}}>
+              <p style={{fontSize: '0.95rem', color: 'var(--text-color)', lineHeight: '1.6', margin: 0}}>
+                <strong style={{fontSize: '1.05rem', color: 'var(--crimson-dark)', display: 'block', marginBottom: '0.5rem'}}>⚜️ 등장인물 (Characters) 관리 & 세부 규칙</strong>
+                당신의 서사 속에서 조력자, 연인, 스승 혹은 적대자로 나타나는 생명체들입니다.
               </p>
+              <ul style={{fontSize: '0.85rem', color: 'var(--text-light)', marginTop: '0.5rem', paddingLeft: '1.2rem', lineHeight: '1.6', marginBlockEnd: 0}}>
+                <li><strong>초기 생성:</strong> 게임 시작 시 **가장 가까운 사람 1명, 친구/연인 1명, 지역 유력자 1명** 등 필멸자 3명과 당신을 창조한 불멸자 뱀파이어 1명을 포함하여 창조합니다.</li>
+                <li><strong>필멸자(Mortal) 세부 규칙:</strong> 필멸자는 순수한 인간입니다. 세월의 흐름에 저항할 수 없으므로, **이야기가 수십 년 혹은 100년 이상 흘렀다면 필멸자 캐릭터들은 자연스럽게 노화하거나 사망**하게 됩니다. 이들의 죽음을 연대기에 자연스레 녹여내고, 캐릭터 카드의 생사(Alive) 체크박스를 해제하여 사망 처리하십시오.</li>
+                <li><strong>불멸자(Immortal) 세부 규칙:</strong> 당신을 탄생시킨 창조주나 다른 뱀파이어, 혹은 초자연적 존재들입니다. 이들은 세월이 흘러도 노화하거나 자연사하지 않고 영원히 생존하며 당신의 삶에 지대한 영향을 줍니다.</li>
+              </ul>
             </div>
             <div className="add-form" style={{display: 'flex', flexDirection: 'column', gap: '0.75rem', padding: '1rem', border: '1px solid var(--gold-dark)', borderRadius: '6px', backgroundColor: 'rgba(255,255,255,0.02)'}}>
               <div style={{display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap'}}>
@@ -1611,12 +1672,16 @@ function App() {
         {activeTab === 'marks' && (
           <section className="parchment-card" style={{ maxWidth: '800px', margin: '0 auto' }}>
             <h3 className="section-title gothic-font"><IconBook /> 표식 (Marks)</h3>
-            <div style={{marginBottom: '1.5rem', padding: '1rem', backgroundColor: 'rgba(143,117,54,0.1)', border: '1px solid var(--gold-dark)', borderRadius: '4px'}}>
-              <p style={{fontSize: '0.95rem', color: 'var(--text-color)', lineHeight: '1.6', whiteSpace: 'pre-line'}}>
-                <strong>[ 표식 (Marks) - 초기 1가지 창조 ]</strong>
-                당신이 흡혈귀가 되면서 신체나 정신에 지워지지 않게 새겨진 기이한 <strong>표식</strong>을 창조하십시오.
-                <span style={{color: 'var(--text-light)', fontSize: '0.85rem'}}>예: 태양 아래서 살갗이 탄다, 박쥐로 변할 수 있다, 십자가를 두려워한다 등</span>
+            <div style={{marginBottom: '1.5rem', padding: '1.25rem', backgroundColor: 'rgba(143,117,54,0.08)', border: '1px solid var(--gold-dark)', borderRadius: '6px', borderLeft: '4px solid var(--gold-dark)'}}>
+              <p style={{fontSize: '0.95rem', color: 'var(--text-color)', lineHeight: '1.6', margin: 0}}>
+                <strong style={{fontSize: '1.05rem', color: 'var(--crimson-dark)', display: 'block', marginBottom: '0.5rem'}}>⚜️ 표식 (Marks) 관리 & 세부 규칙</strong>
+                당신이 필멸성을 잃고 뱀파이어화되면서 신체적, 또는 정신적으로 드러나는 기이하고 무서운 증표들입니다.
               </p>
+              <ul style={{fontSize: '0.85rem', color: 'var(--text-light)', marginTop: '0.5rem', paddingLeft: '1.2rem', lineHeight: '1.6', marginBlockEnd: 0}}>
+                <li><strong>초기 생성:</strong> 게임 시작 시 흡혈귀 기원(Origin)과 함께 나타난 <strong>1가지</strong>의 첫 표식을 설정합니다.</li>
+                <li><strong>인간성 상실과 발각 규칙:</strong> 표식이 늘어난다는 것은 당신의 몸과 영혼이 인간에게서 점점 더 멀어짐을 의미합니다. 표식이 너무 많아지면 필멸자 사회에 섞여 살 수 없으며, 일반인들에게 흡혈귀 정체가 쉽게 발각되어 결국 거처를 옮기거나(자원 소실) 사냥꾼의 침입을 받는 등의 서사적 위험을 초래합니다.</li>
+                <li><strong>초자연적 권능:</strong> 특정 표식은 인간을 초월한 비행 능력, 재생력, 동물 교감 등 강력한 힘의 원천으로 기록될 수 있습니다.</li>
+              </ul>
             </div>
             <div className="add-form" style={{display: 'flex', flexDirection: 'column', gap: '0.75rem', padding: '1rem', border: '1px solid var(--gold-dark)', borderRadius: '6px', backgroundColor: 'rgba(255,255,255,0.02)'}}>
               <div style={{display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap'}}>
@@ -1712,7 +1777,7 @@ function App() {
           <section className="parchment-card" style={{ maxWidth: '800px', margin: '0 auto' }}>
             <h3 className="section-title gothic-font"><IconBook /> 일기장 (Archived Memories)</h3>
             <div style={{display:'flex', flexDirection:'column', gap:'1rem'}}>
-              <p className="small-text">일기장으로 이관된 기억들의 뭉치입니다. 이 경험들은 더는 수정되지 않으며 고정된 역사가 됩니다.</p>
+              <p className="small-text">일기장으로 이관된 소중한 기억들의 뭉치입니다. 뱀파이어 전용 기록실로서, 보관된 역사적 사실이나 서사를 오타 교정 등을 위해 자유롭게 수정하고 정리하실 수 있습니다.</p>
               {gameState.diary.map((entry, dIdx) => (
                 <div key={entry.id} className="memory-box" style={{borderColor: 'var(--gold-dark)', background:'rgba(143,117,54,0.1)'}}>
                   <div className="memory-header" style={{color:'var(--crimson-dark)'}}>
@@ -1721,8 +1786,66 @@ function App() {
                   </div>
                   <ul className="experience-list">
                     {entry.experiences.map(e => (
-                      <li key={e.id} className="experience-item" style={{borderLeftColor: 'var(--crimson-dark)', background:'rgba(255,255,255,0.5)', whiteSpace: 'pre-line'}}>
-                        {e.text}
+                      <li key={e.id} className="experience-item" style={{borderLeftColor: 'var(--crimson-dark)', background:'rgba(255,255,255,0.5)', whiteSpace: 'pre-line', flexDirection: 'column', alignItems: 'stretch'}}>
+                        {editingDiaryExpId === e.id ? (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', width: '100%' }}>
+                            <textarea
+                              className="input-medieval"
+                              style={{
+                                width: '100%',
+                                minHeight: '80px',
+                                fontSize: '0.95rem',
+                                padding: '0.5rem',
+                                backgroundColor: 'rgba(255, 255, 255, 0.85)',
+                                border: '1px solid var(--gold-accent)',
+                                borderRadius: '3px',
+                                resize: 'vertical',
+                                fontFamily: 'inherit'
+                              }}
+                              value={editingDiaryExpText}
+                              onChange={e => setEditingDiaryExpText(e.target.value)}
+                              autoFocus
+                            />
+                            <div style={{ display: 'flex', gap: '0.4rem', justifyContent: 'flex-end' }}>
+                              <button
+                                className="btn-gold-outline"
+                                style={{ padding: '0.15rem 0.5rem', fontSize: '0.75rem' }}
+                                onClick={handleCancelEditDiaryExp}
+                              >
+                                취소
+                              </button>
+                              <button
+                                className="btn-medieval"
+                                style={{ padding: '0.15rem 0.5rem', fontSize: '0.75rem', minHeight: 'auto' }}
+                                onClick={() => handleSaveEditDiaryExp(entry.id, e.id)}
+                              >
+                                저장
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', width: '100%', gap: '0.5rem' }}>
+                            <span style={{ flex: 1 }}>{e.text}</span>
+                            <div style={{ display: 'flex', gap: '0.2rem', flexShrink: 0 }}>
+                              <button 
+                                className="icon-btn" 
+                                title="수정" 
+                                style={{ color: 'var(--gold-dark)', padding: '0.1rem' }}
+                                onClick={() => handleStartEditDiaryExp(e.id, e.text)}
+                              >
+                                <IconEdit />
+                              </button>
+                              <button 
+                                className="icon-btn delete" 
+                                title="삭제" 
+                                style={{ padding: '0.1rem' }}
+                                onClick={() => handleDeleteDiaryExp(entry.id, e.id)}
+                              >
+                                <IconTrash />
+                              </button>
+                            </div>
+                          </div>
+                        )}
                       </li>
                     ))}
                   </ul>
