@@ -1,7 +1,7 @@
-@import url('https://fonts.googleapis.com/css2?family=Eulyoo1945:wght@400;600;700&family=Nanum+Myeongjo:wght@400;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Eulyoo1945:wght@400;600;700&family=Grenze+Gotisch:wght@500;700;900&family=Nanum+Myeongjo:wght@400;700;800&family=UnifrakturMaguntia&display=swap');
 
 :root {
-  --bg-parchment: #fdfbf7; /* Very clean, refined ivory aged parchment */
+  --bg-parchment: #fdfbf7; /* Refined ivory aged parchment */
   --bg-dark-parchment: #f5f0e6;
   --text-color: #2b221a; /* Rich dark ink charcoal */
   --text-light: #5c4e43;
@@ -19,12 +19,10 @@
   box-sizing: border-box;
   margin: 0;
   padding: 0;
-  /* Apply unified elegant tight spacing globally to Eulyoo1945 */
-  letter-spacing: -0.04em !important;
 }
 
 body {
-  font-family: "Eulyoo1945", "Nanum Myeongjo", serif;
+  font-family: "UnifrakturMaguntia", "Grenze Gotisch", "Eulyoo1945", "Nanum Myeongjo", serif;
   background-color: #f7f2e5; /* Warm, rich antique parchment scriptorium desk */
   color: var(--text-color);
   min-height: 100vh;
@@ -38,10 +36,35 @@ body {
   line-height: 1.75;
 }
 
-h1, h2, h3, h4, .gothic-font {
+/* Base typography spacing adjustments for Korean texts */
+p, span, li, td, th, input, textarea, select {
   font-family: "Eulyoo1945", "Nanum Myeongjo", serif;
+  letter-spacing: -0.04em;
+}
+
+h1, h2, h3, h4, .gothic-font {
+  font-family: "UnifrakturMaguntia", "Grenze Gotisch", "Eulyoo1945", "Nanum Myeongjo", serif;
   font-weight: 700;
   color: var(--crimson-dark);
+}
+
+/* Beautiful styling for mixed languages in titles */
+.app-title {
+  font-family: "UnifrakturMaguntia", "Grenze Gotisch", "Eulyoo1945", serif;
+  font-weight: 700;
+  font-size: 2.6rem;
+  color: var(--crimson-dark);
+  margin-bottom: 0.5rem;
+  text-shadow: 1px 1px 0 rgba(255,255,255,0.7);
+  letter-spacing: -0.01em; /* Widen slightly for gothic letters */
+}
+
+.app-subtitle {
+  font-family: "UnifrakturMaguntia", "Grenze Gotisch", "Eulyoo1945", serif;
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--gold-dark);
+  letter-spacing: 0.05em;
 }
 
 /* Scrollbars */
@@ -79,23 +102,6 @@ h1, h2, h3, h4, .gothic-font {
   display: flex;
   flex-direction: column;
   align-items: center;
-}
-
-.app-title {
-  font-family: "Eulyoo1945", serif;
-  font-weight: 700;
-  font-size: 2.6rem;
-  color: var(--crimson-dark);
-  margin-bottom: 0.5rem;
-  text-shadow: 1px 1px 0 rgba(255,255,255,0.7);
-}
-
-.app-subtitle {
-  font-family: "Eulyoo1945", serif;
-  font-size: 1.1rem;
-  font-weight: 600;
-  color: var(--gold-dark);
-  text-transform: uppercase;
 }
 
 .main-grid {
@@ -147,9 +153,9 @@ h1, h2, h3, h4, .gothic-font {
   justify-content: center;
   margin: 2.5rem 0;
   color: var(--gold-accent);
-  font-family: "Eulyoo1945", serif;
+  font-family: "UnifrakturMaguntia", "Grenze Gotisch", serif;
   font-weight: 700;
-  font-size: 0.9rem;
+  font-size: 1.1rem;
 }
 .ornate-divider::before,
 .ornate-divider::after {
@@ -267,11 +273,11 @@ h1, h2, h3, h4, .gothic-font {
 .prompt-badge {
   background: var(--crimson-dark);
   color: #fff;
-  font-family: "Eulyoo1945", serif;
+  font-family: "UnifrakturMaguntia", "Grenze Gotisch", "Eulyoo1945", serif;
   font-weight: 700;
   padding: 0.2rem 0.6rem;
   border-radius: 2px;
-  font-size: 0.8rem;
+  font-size: 0.85rem;
   border: 1px solid var(--gold-accent);
 }
 
@@ -283,11 +289,11 @@ h1, h2, h3, h4, .gothic-font {
   text-align: justify;
 }
 
-/* Unified drop cap in Eulyoo1945 style */
+/* Drop cap uses beautiful classic Fraktur style for English, falling back to Eulyoo1945 */
 .prompt-body::first-letter {
-  font-family: "Eulyoo1945", serif;
+  font-family: "UnifrakturMaguntia", "Eulyoo1945", serif;
   font-weight: 700;
-  font-size: 2rem;
+  font-size: 2.2rem;
   color: var(--crimson-primary);
   margin-right: 2px;
   line-height: 1;
@@ -317,7 +323,7 @@ h1, h2, h3, h4, .gothic-font {
   font-size: 1.5rem;
   font-weight: bold;
   box-shadow: 2px 2px 0 rgba(197, 160, 89, 0.12);
-  font-family: "Eulyoo1945", serif;
+  font-family: "UnifrakturMaguntia", "Grenze Gotisch", serif;
   position: relative;
 }
 .die::before {
@@ -599,7 +605,7 @@ h1, h2, h3, h4, .gothic-font {
   font-weight: 700;
   color: var(--gold-dark);
   margin-bottom: 0.5rem;
-  font-family: "Eulyoo1945", serif;
+  font-family: "UnifrakturMaguntia", "Grenze Gotisch", "Eulyoo1945", serif;
 }
 
 /* Setup Page Screen */
@@ -687,7 +693,7 @@ h1, h2, h3, h4, .gothic-font {
 .game-over-title {
   font-size: 2.8rem;
   color: var(--crimson-primary);
-  font-family: "Eulyoo1945", serif;
+  font-family: "UnifrakturMaguntia", "Grenze Gotisch", "Eulyoo1945", serif;
   animation: pulseGlow 3s infinite alternate;
 }
 @keyframes pulseGlow {
