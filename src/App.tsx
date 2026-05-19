@@ -1345,7 +1345,10 @@ function App() {
               </div>
             </div>
             <div className="item-grid" style={{marginTop: '1.5rem'}}>
-              {gameState.skills.map(skill => (
+              {[...gameState.skills].sort((a, b) => {
+                if (a.isChecked === b.isChecked) return 0;
+                return a.isChecked ? 1 : -1;
+              }).map(skill => (
                 <div key={skill.id} className={`item-card ${skill.isChecked ? 'checked' : ''}`}>
                   <div style={{display:'flex', alignItems:'center', gap:'0.75rem', flex: 1}}>
                     <input 
