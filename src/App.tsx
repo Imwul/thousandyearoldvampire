@@ -90,6 +90,17 @@ const initialGameState: GameState = {
   activeAltIdx: null,
 };
 
+const parseTextWithDescription = (text: string): { title: string; desc: string } => {
+  const colonIndex = text.indexOf(':') !== -1 ? text.indexOf(':') : text.indexOf('：');
+  if (colonIndex === -1) {
+    return { title: text.trim(), desc: '' };
+  }
+  return {
+    title: text.substring(0, colonIndex).trim(),
+    desc: text.substring(colonIndex + 1).trim()
+  };
+};
+
 function App() {
   const [gameState, setGameState] = useState<GameState>(initialGameState);
   const [activeTab, setActiveTab] = useState<'setup' | 'memories' | 'skills' | 'resources' | 'characters' | 'marks' | 'diary' | 'manual'>('setup');
@@ -103,11 +114,15 @@ function App() {
   const [currentJournalText, setCurrentJournalText] = useState('');
   const [newExperienceInputs, setNewExperienceInputs] = useState<Record<string, string>>({});
   const [newSkillName, setNewSkillName] = useState('');
+  const [newSkillDesc, setNewSkillDesc] = useState('');
   const [newResourceName, setNewResourceName] = useState('');
+  const [newResourceDesc, setNewResourceDesc] = useState('');
   const [newCharacterName, setNewCharacterName] = useState('');
+  const [newCharacterDesc, setNewCharacterDesc] = useState('');
   const [newCharacterType, setNewCharacterType] = useState<'mortal' | 'immortal'>('mortal');
   const [newResourceIsStationary, setNewResourceIsStationary] = useState(false);
   const [newSkillIsAncient, setNewSkillIsAncient] = useState(false);
+  const [newMarkName, setNewMarkName] = useState('');
   const [newMarkDesc, setNewMarkDesc] = useState('');
 
   // Journal editing states
@@ -120,16 +135,20 @@ function App() {
 
   // Inline editing states for lists
   const [editingSkillId, setEditingSkillId] = useState<string | null>(null);
-  const [editingSkillText, setEditingSkillText] = useState<string>('');
+  const [editingSkillName, setEditingSkillName] = useState<string>('');
+  const [editingSkillDesc, setEditingSkillDesc] = useState<string>('');
   
   const [editingResourceId, setEditingResourceId] = useState<string | null>(null);
-  const [editingResourceText, setEditingResourceText] = useState<string>('');
+  const [editingResourceName, setEditingResourceName] = useState<string>('');
+  const [editingResourceDesc, setEditingResourceDesc] = useState<string>('');
   
   const [editingCharacterId, setEditingCharacterId] = useState<string | null>(null);
-  const [editingCharacterText, setEditingCharacterText] = useState<string>('');
+  const [editingCharacterName, setEditingCharacterName] = useState<string>('');
+  const [editingCharacterDesc, setEditingCharacterDesc] = useState<string>('');
   
   const [editingMarkId, setEditingMarkId] = useState<string | null>(null);
-  const [editingMarkText, setEditingMarkText] = useState<string>('');
+  const [editingMarkName, setEditingMarkName] = useState<string>('');
+  const [editingMarkDesc, setEditingMarkDesc] = useState<string>('');
 
   const [user, setUser] = useState<User | null>(null);
 
@@ -541,11 +560,15 @@ function App() {
   // 2. Skills
   const handleAddSkill = () => {
     if (!newSkillName.trim()) return;
+    const fullName = newSkillDesc.trim()
+      ? `${newSkillName.trim()}: ${newSkillDesc.trim()}`
+      : newSkillName.trim();
     setGameState(prev => ({
       ...prev,
-      skills: [...prev.skills, { id: `s-${Date.now()}`, name: newSkillName.trim(), isChecked: false, isAncient: newSkillIsAncient }]
+      skills: [...prev.skills, { id: `s-${Date.now()}`, name: fullName, isChecked: false, isAncient: newSkillIsAncient }]
     }));
     setNewSkillName('');
+    setNewSkillDesc('');
     setNewSkillIsAncient(false);
   };
 
@@ -566,11 +589,15 @@ function App() {
   // 3. Resources
   const handleAddResource = () => {
     if (!newResourceName.trim()) return;
+    const fullName = newResourceDesc.trim()
+      ? `${newResourceName.trim()}: ${newResourceDesc.trim()}`
+      : newResourceName.trim();
     setGameState(prev => ({
       ...prev,
-      resources: [...prev.resources, { id: `r-${Date.now()}`, name: newResourceName.trim(), isStationary: newResourceIsStationary }]
+      resources: [...prev.resources, { id: `r-${Date.now()}`, name: fullName, isStationary: newResourceIsStationary }]
     }));
     setNewResourceName('');
+    setNewResourceDesc('');
     setNewResourceIsStationary(false);
   };
 
@@ -591,16 +618,20 @@ function App() {
   // 4. Characters
   const handleAddCharacter = () => {
     if (!newCharacterName.trim()) return;
+    const fullName = newCharacterDesc.trim()
+      ? `${newCharacterName.trim()}: ${newCharacterDesc.trim()}`
+      : newCharacterName.trim();
     setGameState(prev => ({
       ...prev,
       characters: [...prev.characters, { 
         id: `c-${Date.now()}`, 
-        name: newCharacterName.trim(), 
+        name: fullName, 
         type: newCharacterType, 
         isAlive: true 
       }]
     }));
     setNewCharacterName('');
+    setNewCharacterDesc('');
   };
 
   const handleToggleCharacterDeath = (id: string) => {
@@ -626,11 +657,15 @@ function App() {
 
   // 5. Marks
   const handleAddMark = () => {
-    if (!newMarkDesc.trim()) return;
+    if (!newMarkName.trim()) return;
+    const fullName = newMarkDesc.trim()
+      ? `${newMarkName.trim()}: ${newMarkDesc.trim()}`
+      : newMarkName.trim();
     setGameState(prev => ({
       ...prev,
-      marks: [...prev.marks, { id: `m-${Date.now()}`, description: newMarkDesc.trim() }]
+      marks: [...prev.marks, { id: `m-${Date.now()}`, description: fullName }]
     }));
+    setNewMarkName('');
     setNewMarkDesc('');
   };
 
@@ -643,53 +678,73 @@ function App() {
 
   // Inline editing handlers for lists
   const handleStartEditSkill = (id: string, name: string) => {
+    const parsed = parseTextWithDescription(name);
     setEditingSkillId(id);
-    setEditingSkillText(name);
+    setEditingSkillName(parsed.title);
+    setEditingSkillDesc(parsed.desc);
   };
   const handleSaveEditSkill = (id: string) => {
-    if (!editingSkillText.trim()) return;
+    if (!editingSkillName.trim()) return;
+    const fullName = editingSkillDesc.trim()
+      ? `${editingSkillName.trim()}: ${editingSkillDesc.trim()}`
+      : editingSkillName.trim();
     setGameState(prev => ({
       ...prev,
-      skills: prev.skills.map(s => s.id === id ? { ...s, name: editingSkillText.trim() } : s)
+      skills: prev.skills.map(s => s.id === id ? { ...s, name: fullName } : s)
     }));
     setEditingSkillId(null);
   };
 
   const handleStartEditResource = (id: string, name: string) => {
+    const parsed = parseTextWithDescription(name);
     setEditingResourceId(id);
-    setEditingResourceText(name);
+    setEditingResourceName(parsed.title);
+    setEditingResourceDesc(parsed.desc);
   };
   const handleSaveEditResource = (id: string) => {
-    if (!editingResourceText.trim()) return;
+    if (!editingResourceName.trim()) return;
+    const fullName = editingResourceDesc.trim()
+      ? `${editingResourceName.trim()}: ${editingResourceDesc.trim()}`
+      : editingResourceName.trim();
     setGameState(prev => ({
       ...prev,
-      resources: prev.resources.map(r => r.id === id ? { ...r, name: editingResourceText.trim() } : r)
+      resources: prev.resources.map(r => r.id === id ? { ...r, name: fullName } : r)
     }));
     setEditingResourceId(null);
   };
 
   const handleStartEditCharacter = (id: string, name: string) => {
+    const parsed = parseTextWithDescription(name);
     setEditingCharacterId(id);
-    setEditingCharacterText(name);
+    setEditingCharacterName(parsed.title);
+    setEditingCharacterDesc(parsed.desc);
   };
   const handleSaveEditCharacter = (id: string) => {
-    if (!editingCharacterText.trim()) return;
+    if (!editingCharacterName.trim()) return;
+    const fullName = editingCharacterDesc.trim()
+      ? `${editingCharacterName.trim()}: ${editingCharacterDesc.trim()}`
+      : editingCharacterName.trim();
     setGameState(prev => ({
       ...prev,
-      characters: prev.characters.map(c => c.id === id ? { ...c, name: editingCharacterText.trim() } : c)
+      characters: prev.characters.map(c => c.id === id ? { ...c, name: fullName } : c)
     }));
     setEditingCharacterId(null);
   };
 
   const handleStartEditMark = (id: string, desc: string) => {
+    const parsed = parseTextWithDescription(desc);
     setEditingMarkId(id);
-    setEditingMarkText(desc);
+    setEditingMarkName(parsed.title);
+    setEditingMarkDesc(parsed.desc);
   };
   const handleSaveEditMark = (id: string) => {
-    if (!editingMarkText.trim()) return;
+    if (!editingMarkName.trim()) return;
+    const fullName = editingMarkDesc.trim()
+      ? `${editingMarkName.trim()}: ${editingMarkDesc.trim()}`
+      : editingMarkName.trim();
     setGameState(prev => ({
       ...prev,
-      marks: prev.marks.map(m => m.id === id ? { ...m, description: editingMarkText.trim() } : m)
+      marks: prev.marks.map(m => m.id === id ? { ...m, description: fullName } : m)
     }));
     setEditingMarkId(null);
   };
@@ -1199,17 +1254,25 @@ function App() {
               </p>
             </div>
             <div className="add-form" style={{flexDirection: 'column', gap: '0.5rem', alignItems: 'stretch'}}>
-              <div style={{display: 'flex', gap: '0.5rem', alignItems: 'center'}}>
+              <div style={{display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap'}}>
                 <label style={{display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.9rem', color: 'var(--text-color)', cursor: 'pointer', whiteSpace: 'nowrap'}}>
                   <input type="checkbox" checked={newSkillIsAncient} onChange={e => setNewSkillIsAncient(e.target.checked)} style={{cursor: 'pointer'}} /> 고대 기술
                 </label>
                 <input 
                   type="text" 
                   className="input-medieval" 
-                  style={{flex: 1}}
-                  placeholder="새 기술 추가 (예: 은밀한 이동, 조작...)"
+                  style={{flex: '1 1 180px'}}
+                  placeholder="기술 명칭 (예: 가학적 정신분석)"
                   value={newSkillName}
                   onChange={e => setNewSkillName(e.target.value)}
+                />
+                <input 
+                  type="text" 
+                  className="input-medieval" 
+                  style={{flex: '2 1 250px'}}
+                  placeholder="부연 설명 (예: 눈빛만으로 욕망을 간파함)"
+                  value={newSkillDesc}
+                  onChange={e => setNewSkillDesc(e.target.value)}
                   onKeyDown={e => e.key === 'Enter' && handleAddSkill()}
                 />
                 <button className="btn-medieval" onClick={handleAddSkill} style={{padding:'0.5rem'}}>
@@ -1228,20 +1291,43 @@ function App() {
                       style={{width:'18px', height:'18px', cursor:'pointer'}}
                     />
                     {editingSkillId === skill.id ? (
-                      <input
-                        type="text"
-                        className="input-medieval"
-                        style={{flex: 1, padding: '0.2rem 0.5rem', fontSize: '0.95rem'}}
-                        value={editingSkillText}
-                        onChange={e => setEditingSkillText(e.target.value)}
-                        onKeyDown={e => e.key === 'Enter' && handleSaveEditSkill(skill.id)}
-                        autoFocus
-                      />
+                      <div style={{display:'flex', gap:'0.4rem', flex: 1, flexWrap: 'wrap'}}>
+                        <input
+                          type="text"
+                          className="input-medieval"
+                          style={{flex: '1 1 150px', padding: '0.2rem 0.5rem', fontSize: '0.95rem'}}
+                          value={editingSkillName}
+                          placeholder="기술 명칭"
+                          onChange={e => setEditingSkillName(e.target.value)}
+                          autoFocus
+                        />
+                        <input
+                          type="text"
+                          className="input-medieval"
+                          style={{flex: '2 1 200px', padding: '0.2rem 0.5rem', fontSize: '0.95rem'}}
+                          value={editingSkillDesc}
+                          placeholder="부연 설명 (선택)"
+                          onChange={e => setEditingSkillDesc(e.target.value)}
+                          onKeyDown={e => e.key === 'Enter' && handleSaveEditSkill(skill.id)}
+                        />
+                      </div>
                     ) : (
-                      <span style={{fontWeight:'500'}}>
-                        {skill.isAncient && <span style={{fontSize:'0.75rem', color:'var(--crimson-primary)', marginRight:'0.3rem', fontWeight:'bold'}}>[고대]</span>}
-                        {skill.name}
-                      </span>
+                      (() => {
+                        const parsed = parseTextWithDescription(skill.name);
+                        return (
+                          <div style={{display:'flex', flexDirection:'column', gap:'0.15rem', flex: 1}}>
+                            <span style={{fontSize:'1.05rem', fontWeight:'bold', color:'var(--text-color)', display:'flex', alignItems:'center', gap:'0.3rem'}}>
+                              {skill.isAncient && <span style={{fontSize:'0.75rem', color:'var(--crimson-primary)', fontWeight:'bold'}}>[고대]</span>}
+                              {parsed.title}
+                            </span>
+                            {parsed.desc && (
+                              <span style={{fontSize:'0.85rem', color:'var(--text-light)', lineHeight:'1.4'}}>
+                                {parsed.desc}
+                              </span>
+                            )}
+                          </div>
+                        );
+                      })()
                     )}
                   </div>
                   <div style={{display:'flex', gap:'0.3rem'}}>
@@ -1281,17 +1367,25 @@ function App() {
               </p>
             </div>
             <div className="add-form" style={{flexDirection: 'column', gap: '0.5rem', alignItems: 'stretch'}}>
-              <div style={{display: 'flex', gap: '0.5rem', alignItems: 'center'}}>
+              <div style={{display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap'}}>
                 <label style={{display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.9rem', color: 'var(--text-color)', cursor: 'pointer', whiteSpace: 'nowrap'}}>
                   <input type="checkbox" checked={newResourceIsStationary} onChange={e => setNewResourceIsStationary(e.target.checked)} style={{cursor: 'pointer'}} /> 고정 자원
                 </label>
                 <input 
                   type="text" 
                   className="input-medieval" 
-                  style={{flex: 1}}
-                  placeholder="새 자원 추가 (예: 옛 고성, 재화 주머니...)"
+                  style={{flex: '1 1 180px'}}
+                  placeholder="자원 명칭 (예: 옛 고성)"
                   value={newResourceName}
                   onChange={e => setNewResourceName(e.target.value)}
+                />
+                <input 
+                  type="text" 
+                  className="input-medieval" 
+                  style={{flex: '2 1 250px'}}
+                  placeholder="부연 설명 (예: 민가와 격리되어 은신하기 좋은 사저)"
+                  value={newResourceDesc}
+                  onChange={e => setNewResourceDesc(e.target.value)}
                   onKeyDown={e => e.key === 'Enter' && handleAddResource()}
                 />
                 <button className="btn-medieval" onClick={handleAddResource} style={{padding:'0.5rem'}}>
@@ -1307,17 +1401,42 @@ function App() {
                       {res.isStationary ? '고정 자원 (Stationary)' : '이동 가능'}
                     </span>
                     {editingResourceId === res.id ? (
-                      <input
-                        type="text"
-                        className="input-medieval"
-                        style={{width: '90%', padding: '0.2rem 0.5rem', fontSize: '0.95rem', marginTop: '0.2rem'}}
-                        value={editingResourceText}
-                        onChange={e => setEditingResourceText(e.target.value)}
-                        onKeyDown={e => e.key === 'Enter' && handleSaveEditResource(res.id)}
-                        autoFocus
-                      />
+                      <div style={{display:'flex', gap:'0.4rem', flex: 1, flexWrap: 'wrap', marginTop:'0.2rem'}}>
+                        <input
+                          type="text"
+                          className="input-medieval"
+                          style={{flex: '1 1 150px', padding: '0.2rem 0.5rem', fontSize: '0.95rem'}}
+                          value={editingResourceName}
+                          placeholder="자원 명칭"
+                          onChange={e => setEditingResourceName(e.target.value)}
+                          autoFocus
+                        />
+                        <input
+                          type="text"
+                          className="input-medieval"
+                          style={{flex: '2 1 200px', padding: '0.2rem 0.5rem', fontSize: '0.95rem'}}
+                          value={editingResourceDesc}
+                          placeholder="부연 설명 (선택)"
+                          onChange={e => setEditingResourceDesc(e.target.value)}
+                          onKeyDown={e => e.key === 'Enter' && handleSaveEditResource(res.id)}
+                        />
+                      </div>
                     ) : (
-                      <span style={{fontWeight:'500'}}>{res.name}</span>
+                      (() => {
+                        const parsed = parseTextWithDescription(res.name);
+                        return (
+                          <div style={{display:'flex', flexDirection:'column', gap:'0.15rem', marginTop:'0.2rem'}}>
+                            <span style={{fontSize:'1.05rem', fontWeight:'bold', color:'var(--text-color)'}}>
+                              {parsed.title}
+                            </span>
+                            {parsed.desc && (
+                              <span style={{fontSize:'0.85rem', color:'var(--text-light)', lineHeight:'1.4'}}>
+                                {parsed.desc}
+                              </span>
+                            )}
+                          </div>
+                        );
+                      })()
                     )}
                   </div>
                   <div style={{display:'flex', gap:'0.3rem'}}>
@@ -1357,7 +1476,7 @@ function App() {
               </p>
             </div>
             <div className="add-form" style={{flexDirection: 'column', gap: '0.5rem', alignItems: 'stretch'}}>
-              <div style={{display: 'flex', gap: '0.5rem', alignItems: 'center'}}>
+              <div style={{display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap'}}>
                 <select 
                   className="input-medieval" 
                   style={{width: 'auto', padding: '0.4rem'}}
@@ -1370,10 +1489,18 @@ function App() {
                 <input 
                   type="text" 
                   className="input-medieval" 
-                  style={{flex: 1}}
-                  placeholder="새 인물 추가 (예: 그레고르 신부)"
+                  style={{flex: '1 1 150px'}}
+                  placeholder="인물 이름 (예: 안나)"
                   value={newCharacterName}
                   onChange={e => setNewCharacterName(e.target.value)}
+                />
+                <input 
+                  type="text" 
+                  className="input-medieval" 
+                  style={{flex: '2 1 200px'}}
+                  placeholder="관계/부연 설명 (예: 나의 충직한 하녀)"
+                  value={newCharacterDesc}
+                  onChange={e => setNewCharacterDesc(e.target.value)}
                   onKeyDown={e => e.key === 'Enter' && handleAddCharacter()}
                 />
                 <button className="btn-medieval" onClick={handleAddCharacter} style={{padding:'0.5rem'}}>
@@ -1389,17 +1516,42 @@ function App() {
                       {char.type === 'immortal' ? '불멸자' : '필멸자'} {char.isAlive ? '' : '(사망/소실)'}
                     </span>
                     {editingCharacterId === char.id ? (
-                      <input
-                        type="text"
-                        className="input-medieval"
-                        style={{width: '90%', padding: '0.2rem 0.5rem', fontSize: '0.95rem', marginTop: '0.2rem'}}
-                        value={editingCharacterText}
-                        onChange={e => setEditingCharacterText(e.target.value)}
-                        onKeyDown={e => e.key === 'Enter' && handleSaveEditCharacter(char.id)}
-                        autoFocus
-                      />
+                      <div style={{display:'flex', gap:'0.4rem', flex: 1, flexWrap: 'wrap', marginTop:'0.2rem'}}>
+                        <input
+                          type="text"
+                          className="input-medieval"
+                          style={{flex: '1 1 120px', padding: '0.2rem 0.5rem', fontSize: '0.95rem'}}
+                          value={editingCharacterName}
+                          placeholder="이름"
+                          onChange={e => setEditingCharacterName(e.target.value)}
+                          autoFocus
+                        />
+                        <input
+                          type="text"
+                          className="input-medieval"
+                          style={{flex: '2 1 180px', padding: '0.2rem 0.5rem', fontSize: '0.95rem'}}
+                          value={editingCharacterDesc}
+                          placeholder="관계/설명 (선택)"
+                          onChange={e => setEditingCharacterDesc(e.target.value)}
+                          onKeyDown={e => e.key === 'Enter' && handleSaveEditCharacter(char.id)}
+                        />
+                      </div>
                     ) : (
-                      <span style={{fontWeight:'500'}}>{char.name}</span>
+                      (() => {
+                        const parsed = parseTextWithDescription(char.name);
+                        return (
+                          <div style={{display:'flex', flexDirection:'column', gap:'0.15rem', marginTop:'0.2rem'}}>
+                            <span style={{fontSize:'1.05rem', fontWeight:'bold', color:'var(--text-color)'}}>
+                              {parsed.title}
+                            </span>
+                            {parsed.desc && (
+                              <span style={{fontSize:'0.85rem', color:'var(--text-light)', lineHeight:'1.4'}}>
+                                {parsed.desc}
+                              </span>
+                            )}
+                          </div>
+                        );
+                      })()
                     )}
                   </div>
                   <div style={{display:'flex', gap:'0.4rem', alignItems: 'center'}}>
@@ -1442,35 +1594,71 @@ function App() {
                 <span style={{color: 'var(--text-light)', fontSize: '0.85rem'}}>예: 태양 아래서 살갗이 탄다, 박쥐로 변할 수 있다, 십자가를 두려워한다 등</span>
               </p>
             </div>
-            <div className="add-form">
-              <input 
-                type="text" 
-                className="input-medieval" 
-                placeholder="새 표식 추가..."
-                value={newMarkDesc}
-                onChange={e => setNewMarkDesc(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && handleAddMark()}
-              />
-              <button className="btn-medieval" onClick={handleAddMark} style={{padding:'0.5rem'}}>
-                <IconPlus />
-              </button>
+            <div className="add-form" style={{flexDirection: 'column', gap: '0.5rem', alignItems: 'stretch'}}>
+              <div style={{display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap'}}>
+                <input 
+                  type="text" 
+                  className="input-medieval" 
+                  style={{flex: '1 1 180px'}}
+                  placeholder="표식 이름 (예: 얼음 같은 피부)"
+                  value={newMarkName}
+                  onChange={e => setNewMarkName(e.target.value)}
+                />
+                <input 
+                  type="text" 
+                  className="input-medieval" 
+                  style={{flex: '2 1 250px'}}
+                  placeholder="부연 설명 (예: 만지는 사람마다 소스라치게 놀람)"
+                  value={newMarkDesc}
+                  onChange={e => setNewMarkDesc(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && handleAddMark()}
+                />
+                <button className="btn-medieval" onClick={handleAddMark} style={{padding:'0.5rem'}}>
+                  <IconPlus />
+                </button>
+              </div>
             </div>
             <div className="item-grid" style={{marginTop: '1.5rem'}}>
               {gameState.marks.map(mark => (
                 <div key={mark.id} className="item-card" style={{borderStyle:'dashed', borderColor:'var(--crimson-dark)'}}>
                   <div style={{flex: 1}}>
                     {editingMarkId === mark.id ? (
-                      <input
-                        type="text"
-                        className="input-medieval"
-                        style={{width: '95%', padding: '0.2rem 0.5rem', fontSize: '0.95rem'}}
-                        value={editingMarkText}
-                        onChange={e => setEditingMarkText(e.target.value)}
-                        onKeyDown={e => e.key === 'Enter' && handleSaveEditMark(mark.id)}
-                        autoFocus
-                      />
+                      <div style={{display:'flex', gap:'0.4rem', flex: 1, flexWrap: 'wrap'}}>
+                        <input
+                          type="text"
+                          className="input-medieval"
+                          style={{flex: '1 1 150px', padding: '0.2rem 0.5rem', fontSize: '0.95rem'}}
+                          value={editingMarkName}
+                          placeholder="표식 이름"
+                          onChange={e => setEditingMarkName(e.target.value)}
+                          autoFocus
+                        />
+                        <input
+                          type="text"
+                          className="input-medieval"
+                          style={{flex: '2 1 200px', padding: '0.2rem 0.5rem', fontSize: '0.95rem'}}
+                          value={editingMarkDesc}
+                          placeholder="부연 설명 (선택)"
+                          onChange={e => setEditingMarkDesc(e.target.value)}
+                          onKeyDown={e => e.key === 'Enter' && handleSaveEditMark(mark.id)}
+                        />
+                      </div>
                     ) : (
-                      <span style={{fontWeight:'500'}}>{mark.description}</span>
+                      (() => {
+                        const parsed = parseTextWithDescription(mark.description);
+                        return (
+                          <div style={{display:'flex', flexDirection:'column', gap:'0.15rem'}}>
+                            <span style={{fontSize:'1.05rem', fontWeight:'bold', color:'var(--text-color)'}}>
+                              {parsed.title}
+                            </span>
+                            {parsed.desc && (
+                              <span style={{fontSize:'0.85rem', color:'var(--text-light)', lineHeight:'1.4'}}>
+                                {parsed.desc}
+                              </span>
+                            )}
+                          </div>
+                        );
+                      })()
                     )}
                   </div>
                   <div style={{display:'flex', gap:'0.3rem'}}>
