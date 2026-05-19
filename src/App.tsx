@@ -698,7 +698,7 @@ function App() {
       {/* GLOBAL HEADER */}
       <header className="app-header" style={{flexDirection: 'row', justifyContent: 'space-between', width:'100%', paddingBottom:'0.5rem', borderBottom: 'none'}}>
         <div style={{textAlign: 'left'}}>
-          <h2 style={{fontSize: '1.5rem', color:'var(--crimson-primary)'}} className="gothic-font">천년 동안 살아온 흡혈귀</h2>
+          <h2 style={{fontSize: '1.5rem', color:'var(--crimson-primary)'}} className="gothic-font">천년령 흡혈귀</h2>
           <span className="english-gothic" style={{fontSize:'1.2rem', color: 'var(--gold-dark)', marginTop: '0.2rem', fontWeight: 400}}>
             {gameState.characterName ? `Chronicle of ${gameState.characterName}` : 'Thousand Year Old Vampire'}
           </span>
@@ -764,7 +764,7 @@ function App() {
             <h3 className="section-title gothic-font"><IconBook /> 기본 정보 및 연대기 시작</h3>
             <div style={{marginBottom: '1.5rem', padding: '1rem', backgroundColor: 'rgba(143,117,54,0.1)', border: '1px solid var(--gold-dark)', borderRadius: '4px'}}>
               <p style={{fontSize: '0.95rem', color: 'var(--text-color)', lineHeight: '1.6', whiteSpace: 'pre-line'}}>
-                <strong>[ 천년 동안 살아온 흡혈귀 - 초기 설정 ]</strong>
+                <strong>[ 천년령 흡혈귀 - 초기 설정 ]</strong>
                 당신은 필멸의 삶을 등지고 영겁의 어둠 속으로 들어선 존재입니다. 피의 저주를 짊어지기 전, 당신이 누구였으며 어떤 상태로 흡혈귀가 되었는지 그 기원을 기록하십시오.
               </p>
             </div>
@@ -1338,26 +1338,26 @@ function App() {
         {activeTab === 'manual' && (
           <section className="parchment-card" style={{ maxWidth: '800px', margin: '0 auto' }}>
             <h3 className="section-title gothic-font"><IconBook /> 게임 설명서</h3>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', fontFamily: '"Eulyoo1945", serif', lineHeight: '1.8' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', lineHeight: '1.8', letterSpacing: '-0.04em' }}>
               <p className="small-text" style={{ borderBottom: '1px solid rgba(197, 160, 89, 0.25)', paddingBottom: '0.5rem', marginBottom: '0.5rem', fontWeight: 'bold' }}>
-                📖 천년 동안 살아온 흡혈귀 (Thousand Year Old Vampire) 게임 규칙 요약
+                📖 천년령 흡혈귀 (Thousand Year Old Vampire) 게임 규칙 요약
               </p>
-              <div>
+              <p>
                 <strong>1. 게임의 목표와 시간의 흐름</strong><br/>
                 이 게임은 수백 년에 걸친 흡혈귀의 서사를 일기 형태로 기록하는 솔로 TRPG입니다. [시간의 흐름] 패널에서 '주사위 굴리기'를 누르면, `d10 - d6` 연산 값만큼 프롬프트 페이지를 앞으로 이동하며 새로운 사건을 맞이합니다.
-              </div>
-              <div>
+              </p>
+              <p>
                 <strong>2. 기억(Memory)과 일기장(Diary)</strong><br/>
                 흡혈귀의 뇌 용량은 한계가 있습니다. 기억 슬롯은 최대 5개뿐이며, 한 슬롯에 3개의 <strong>경험(Experience)</strong>만 담을 수 있습니다. 기억 슬롯이 가득 차면 오래된 슬롯 하나를 <strong>일기장(Diary)</strong>으로 이관해야만 새로운 기억을 저장할 수 있습니다. 일기장에 들어간 기억은 흡혈귀 본인도 점차 그 진위를 잊게 됩니다.
-              </div>
-              <div>
+              </p>
+              <p>
                 <strong>3. 기술(Skills)과 자원(Resources)의 상실</strong><br/>
                 프롬프트의 지시에 따라 당신은 특정한 기술이나 자원을 <strong>소비(Check)</strong>하거나 잃어버려야 할 수 있습니다. 잃을 자원이 없다면 더 끔찍한 대가를 치러야 할지도 모릅니다.
-              </div>
-              <div>
+              </p>
+              <p>
                 <strong>4. 등장인물(Characters)과 표식(Marks)</strong><br/>
                 새로운 인물이 서사에 합류하거나, 흡혈귀 사냥꾼에게 쫓기게 될 수 있습니다. 뱀파이어로서 몸에 지워지지 않는 새로운 이형의 <strong>표식</strong>이 생겨나기도 합니다. 프롬프트가 지시하는 대로 탭에 이동하여 시트를 갱신하십시오.
-              </div>
+              </p>
               <p style={{ color: 'var(--crimson-primary)', fontStyle: 'italic', marginTop: '1rem', textAlign: 'center' }}>
                 "모든 것을 잃고, 모든 것을 잊어버리십시오. 그것이 불멸의 대가입니다."
               </p>
