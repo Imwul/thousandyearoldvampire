@@ -1,5 +1,5 @@
 @import url('https://fonts.googleapis.com/css2?family=Eulyoo1945:wght@400;600;700&display=swap');
-@import url('https://fonts.googleapis.com/css2?family=UnifrakturMaguntia&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Pirata+One&display=swap');
 @import url('https://fonts.googleapis.com/css2?family=Grenze+Gotisch:wght@500;700;900&display=swap');
 @import url('https://fonts.googleapis.com/css2?family=Nanum+Myeongjo:wght@400;700;800&display=swap');
 
@@ -25,7 +25,7 @@
 }
 
 body {
-  font-family: "UnifrakturMaguntia", "Grenze Gotisch", "Eulyoo1945", "Nanum Myeongjo", serif;
+  font-family: "Pirata One", "Grenze Gotisch", "Eulyoo1945", "Nanum Myeongjo", serif;
   background-color: #f7f2e5; /* Warm, rich antique parchment scriptorium desk */
   color: var(--text-color);
   min-height: 100vh;
@@ -41,13 +41,13 @@ body {
 
 /* 100% GLOBAL UNIFIED KOREAN tight letter-spacing for all readable elements */
 body, p, span, li, button, input, textarea, select, label, h1, h2, h3, h4, option, td, th {
-  font-family: "UnifrakturMaguntia", "Grenze Gotisch", "Eulyoo1945", "Nanum Myeongjo", serif;
+  font-family: "Pirata One", "Grenze Gotisch", "Eulyoo1945", "Nanum Myeongjo", serif;
   letter-spacing: -0.04em; /* Premium -5% tight spacing */
 }
 
 /* Beautiful gothic overrides for pure English text elements to prevent blackletter overlaps */
 h1, h2, h3, h4, .gothic-font, .app-title, .app-subtitle, .prompt-badge, .timeline-meta, .die, .ornate-divider {
-  font-family: "UnifrakturMaguntia", "Grenze Gotisch", "Eulyoo1945", "Nanum Myeongjo", serif;
+  font-family: "Pirata One", "Grenze Gotisch", "Eulyoo1945", "Nanum Myeongjo", serif;
 }
 
 .app-title {
@@ -288,7 +288,7 @@ h1, h2, h3, h4, .gothic-font, .app-title, .app-subtitle, .prompt-badge, .timelin
 
 /* Drop cap uses beautiful classic Fraktur style for English, falling back to Eulyoo1945 */
 .prompt-body::first-letter {
-  font-family: "UnifrakturMaguntia", "Eulyoo1945", serif;
+  font-family: "Pirata One", "Eulyoo1945", serif;
   font-weight: 700;
   font-size: 2.2rem;
   color: var(--crimson-primary);
