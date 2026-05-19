@@ -41,7 +41,7 @@ body {
 
 /* 100% GLOBAL UNIFIED KOREAN tight letter-spacing for all readable elements */
 body, p, span, li, button, input, textarea, select, label, h1, h2, h3, h4, option, td, th {
-  font-family: "Eulyoo1945", "Nanum Myeongjo", serif;
+  font-family: "UnifrakturMaguntia", "Grenze Gotisch", "Eulyoo1945", "Nanum Myeongjo", serif;
   letter-spacing: -0.04em; /* Premium -5% tight spacing */
 }
 
