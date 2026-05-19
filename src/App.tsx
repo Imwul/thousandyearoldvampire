@@ -1109,9 +1109,9 @@ function App() {
                               </div>
                             </div>
                           ) : (
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', gap: '0.5rem' }}>
-                              <span>{exp.text}</span>
-                              <div style={{ display: 'flex', gap: '0.2rem', flexShrink: 0 }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', width: '100%', gap: '0.5rem' }}>
+                              <span style={{ whiteSpace: 'pre-line', flex: 1 }}>{exp.text}</span>
+                              <div style={{ display: 'flex', gap: '0.2rem', flexShrink: 0, marginTop: '0.15rem' }}>
                                 <button 
                                   className="icon-btn" 
                                   title="경험 수정" 
@@ -1347,7 +1347,7 @@ function App() {
                     </div>
                     <ul className="experience-list">
                       {entry.experiences.map(e => (
-                        <li key={e.id} className="experience-item" style={{borderLeftColor: 'var(--crimson-dark)', background:'rgba(255,255,255,0.5)'}}>
+                        <li key={e.id} className="experience-item" style={{borderLeftColor: 'var(--crimson-dark)', background:'rgba(255,255,255,0.5)', whiteSpace: 'pre-line'}}>
                           {e.text}
                         </li>
                       ))}
