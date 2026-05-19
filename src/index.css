@@ -471,7 +471,8 @@ h1, h2, h3, h4, .gothic-font {
   font-size: 0.95rem;
   line-height: 1.5;
   border-left: 2px solid var(--gold-accent);
-  font-family: "Pretendard", sans-serif;
+  font-family: "Eulyoo1945", "Nanum Myeongjo", serif;
+  letter-spacing: -0.05em;
   animation: slideIn 0.25s ease-out;
 }
 
