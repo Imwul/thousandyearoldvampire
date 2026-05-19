@@ -94,7 +94,7 @@ h1, h2, h3, h4, .gothic-font, .app-title, .app-subtitle, .prompt-badge, .timelin
 
 .app-subtitle {
   font-size: 1.15rem;
-  font-weight: 700;
+  font-weight: 400; /* Perfect regular weight to prevent smearing of gothic letters */
   color: var(--gold-dark);
   letter-spacing: 0.04em; /* Give breathing room to ornate blackletters */
 }
