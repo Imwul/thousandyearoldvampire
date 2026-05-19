@@ -1,17 +1,38 @@
 @import url('https://fonts.googleapis.com/css2?family=Eulyoo1945:wght@400;600;700&display=swap');
-@import url('https://fonts.googleapis.com/css2?family=Pirata+One&display=swap');
-@import url('https://fonts.googleapis.com/css2?family=Grenze+Gotisch:wght@500;700;900&display=swap');
 @import url('https://fonts.googleapis.com/css2?family=Nanum+Myeongjo:wght@400;700;800&display=swap');
 
-/* Redefine local gothic fonts to ONLY render English letters and numbers, leaving punctuation & spaces to Eulyoo1945 */
+/* Directly declare gothic font families with direct source downloads & unicode-range limits (strictly letters and numbers) */
 @font-face {
   font-family: 'PirataLettersOnly';
-  src: local('Pirata One'), local('PirataOne');
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url(https://fonts.gstatic.com/s/pirataone/v23/I_urMpiDvgLdLh0fAtoftig.ttf) format('truetype');
+  unicode-range: U+0030-0039, U+0041-005A, U+0061-007A;
+}
+
+@font-face {
+  font-family: 'GrenzeLettersOnly';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url(https://fonts.gstatic.com/s/grenzegotisch/v20/Fh4hPjjqNDz1osh_jX9YfjudpBJBNV5y5wf_k1i5HT9UcA.ttf) format('truetype');
   unicode-range: U+0030-0039, U+0041-005A, U+0061-007A;
 }
 @font-face {
   font-family: 'GrenzeLettersOnly';
-  src: local('Grenze Gotisch'), local('GrenzeGotisch');
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url(https://fonts.gstatic.com/s/grenzegotisch/v20/Fh4hPjjqNDz1osh_jX9YfjudpBJBNV5y5wf_k1i5yDhUcA.ttf) format('truetype');
+  unicode-range: U+0030-0039, U+0041-005A, U+0061-007A;
+}
+@font-face {
+  font-family: 'GrenzeLettersOnly';
+  font-style: normal;
+  font-weight: 900;
+  font-display: swap;
+  src: url(https://fonts.gstatic.com/s/grenzegotisch/v20/Fh4hPjjqNDz1osh_jX9YfjudpBJBNV5y5wf_k1i5hjhUcA.ttf) format('truetype');
   unicode-range: U+0030-0039, U+0041-005A, U+0061-007A;
 }
 
