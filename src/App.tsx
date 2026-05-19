@@ -92,6 +92,7 @@ const initialGameState: GameState = {
 
 function App() {
   const [isSetupMode, setIsSetupMode] = useState(true);
+  const [setupTab, setSetupTab] = useState<'basic' | 'skills' | 'resources' | 'characters' | 'marks'>('basic');
   const [gameState, setGameState] = useState<GameState>(initialGameState);
   const [activeTab, setActiveTab] = useState<'memories' | 'skills' | 'resources' | 'characters' | 'marks' | 'diary' | 'manual'>('memories');
   
@@ -294,10 +295,11 @@ function App() {
 
 
   // Start game from setup
-  const handleStartGame = (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleStartGame = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
     if (!gameState.characterName.trim()) {
-      alert('흡혈귀의 이름을 입력해 주십시오.');
+      alert('흡혈귀의 이름을 먼저 기입해 주십시오.');
+      setSetupTab('basic');
       return;
     }
     // Pre-populate starting sheet placeholders so user can edit them directly
@@ -329,9 +331,9 @@ function App() {
 
     setGameState(prev => ({
       ...prev,
-      skills: startingSkills,
-      resources: startingResources,
-      characters: startingCharacters,
+      skills: prev.skills.length > 0 ? prev.skills : startingSkills,
+      resources: prev.resources.length > 0 ? prev.resources : startingResources,
+      characters: prev.characters.length > 0 ? prev.characters : startingCharacters,
       memories: startingMemories
     }));
     
@@ -702,41 +704,230 @@ function App() {
             )}
           </div>
           
-          <form onSubmit={handleStartGame}>
-            <p className="setup-instruction">
-              당신은 필멸의 삶을 등지고 영겁의 어둠 속으로 들어선 존재입니다. <br/>
-              피의 저주를 짊어지기 전, 당신의 이름과 그 시작점을 기록해 주십시오.
-            </p>
-            
-            <div className="setup-group">
-              <label>흡혈귀의 이름</label>
-              <input 
-                type="text" 
-                className="input-medieval" 
-                placeholder="예: 로데릭 반 카르슈타인, 발렌티나..."
-                value={gameState.characterName}
-                onChange={e => setGameState({...gameState, characterName: e.target.value})}
-                required
-              />
-            </div>
+          <div className="setup-tabs" style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.5rem', flexWrap: 'wrap', justifyContent: 'center' }}>
+            <button type="button" className={`tab-btn ${setupTab === 'basic' ? 'active' : ''}`} onClick={() => setSetupTab('basic')}>1. 기본 정보</button>
+            <button type="button" className={`tab-btn ${setupTab === 'skills' ? 'active' : ''}`} onClick={() => setSetupTab('skills')}>2. 기술 (3개)</button>
+            <button type="button" className={`tab-btn ${setupTab === 'resources' ? 'active' : ''}`} onClick={() => setSetupTab('resources')}>3. 자원 (3개)</button>
+            <button type="button" className={`tab-btn ${setupTab === 'characters' ? 'active' : ''}`} onClick={() => setSetupTab('characters')}>4. 인물 (5명)</button>
+            <button type="button" className={`tab-btn ${setupTab === 'marks' ? 'active' : ''}`} onClick={() => setSetupTab('marks')}>5. 표식 (1개)</button>
+          </div>
+          
+          <div className="setup-content" style={{ minHeight: '300px' }}>
+            {setupTab === 'basic' && (
+              <div>
+                <div style={{marginBottom: '1.5rem', padding: '1rem', backgroundColor: 'rgba(143,117,54,0.1)', border: '1px solid var(--gold-dark)', borderRadius: '4px'}}>
+                  <p style={{fontSize: '0.95rem', color: 'var(--text-color)', lineHeight: '1.6', whiteSpace: 'pre-line'}}>
+                    <strong>[ 천년 동안 살아온 흡혈귀 - 초기 설정 ]</strong>
+                    당신은 필멸의 삶을 등지고 영겁의 어둠 속으로 들어선 존재입니다. 피의 저주를 짊어지기 전, 당신이 누구였으며 어떤 상태로 흡혈귀가 되었는지 그 기원을 기록하십시오.
+                  </p>
+                </div>
+                
+                <div className="setup-group">
+                  <label>흡혈귀의 이름</label>
+                  <input 
+                    type="text" 
+                    className="input-medieval" 
+                    placeholder="예: 로데릭 반 카르슈타인, 발렌티나..."
+                    value={gameState.characterName}
+                    onChange={e => setGameState({...gameState, characterName: e.target.value})}
+                  />
+                </div>
+                <div className="setup-group">
+                  <label>기원 (어떻게 흡혈귀가 되었는가?)</label>
+                  <textarea 
+                    className="input-medieval" 
+                    style={{minHeight: '100px', resize:'vertical'}}
+                    placeholder="예: 흑사병이 돌던 해, 뒷골목에서 만난 의문의 귀족에 물려 밤을 헤매게 되었다..."
+                    value={gameState.vampireOrigin}
+                    onChange={e => setGameState({...gameState, vampireOrigin: e.target.value})}
+                  />
+                </div>
+                <div style={{textAlign: 'right', marginTop: '1rem'}}>
+                  <button type="button" className="btn-medieval" onClick={() => setSetupTab('skills')}>다음 단계 ➔</button>
+                </div>
+              </div>
+            )}
 
-            <div className="setup-group">
-              <label>기원 (어떻게 흡혈귀가 되었는가?)</label>
-              <textarea 
-                className="input-medieval" 
-                style={{minHeight: '100px', resize:'vertical'}}
-                placeholder="예: 흑사병이 돌던 해, 뒷골목에서 만난 의문의 귀족에 물려 밤을 헤매게 되었다..."
-                value={gameState.vampireOrigin}
-                onChange={e => setGameState({...gameState, vampireOrigin: e.target.value})}
-              />
-            </div>
+            {setupTab === 'skills' && (
+              <div>
+                <div style={{marginBottom: '1.5rem', padding: '1rem', backgroundColor: 'rgba(143,117,54,0.1)', border: '1px solid var(--gold-dark)', borderRadius: '4px'}}>
+                  <p style={{fontSize: '0.95rem', color: 'var(--text-color)', lineHeight: '1.6', whiteSpace: 'pre-line'}}>
+                    <strong>[ 기술 (Skills) - 3가지 창조 ]</strong>
+                    당신이 필멸자 시절부터 익혔거나, 흡혈귀가 되며 얻게 된 <strong>기술 3가지</strong>를 창조하십시오.
+                    이 기술들은 훗날 특정한 프롬프트를 해결하거나 위기를 모면할 때 소비(체크)될 수 있습니다.
+                    <span style={{color: 'var(--text-light)', fontSize: '0.85rem'}}>예: 승마, 야수 교감, 왕실 예법, 사교계의 매력, 검술 등</span>
+                  </p>
+                </div>
+                <div className="add-form">
+                  <input 
+                    type="text" 
+                    className="input-medieval" 
+                    placeholder="새 기술 입력 후 엔터 혹은 추가..."
+                    value={newSkillName}
+                    onChange={e => setNewSkillName(e.target.value)}
+                    onKeyDown={e => e.key === 'Enter' && handleAddSkill()}
+                  />
+                  <button type="button" className="btn-medieval" onClick={handleAddSkill} style={{padding:'0.5rem'}}>
+                    <IconPlus />
+                  </button>
+                </div>
+                <div className="item-grid" style={{marginTop: '1rem'}}>
+                  {gameState.skills.map(skill => (
+                    <div key={skill.id} className="item-card">
+                      <span style={{fontWeight:'500'}}>{skill.name}</span>
+                      <button type="button" className="icon-btn delete" onClick={() => handleDeleteSkill(skill.id)}>
+                        <IconTrash />
+                      </button>
+                    </div>
+                  ))}
+                  {gameState.skills.length === 0 && <p style={{textAlign:'center', color:'var(--text-light)', width:'100%'}}>아직 추가된 기술이 없습니다.</p>}
+                </div>
+                <div style={{display: 'flex', justifyContent: 'space-between', marginTop: '1.5rem'}}>
+                  <button type="button" className="btn-gold-outline" onClick={() => setSetupTab('basic')}>⬅ 이전</button>
+                  <button type="button" className="btn-medieval" onClick={() => setSetupTab('resources')}>다음 단계 ➔</button>
+                </div>
+              </div>
+            )}
 
-            <div style={{textAlign: 'center', marginTop: '2rem'}}>
-              <button type="submit" className="btn-medieval">
-                연대기 시작하기
-              </button>
-            </div>
-          </form>
+            {setupTab === 'resources' && (
+              <div>
+                <div style={{marginBottom: '1.5rem', padding: '1rem', backgroundColor: 'rgba(143,117,54,0.1)', border: '1px solid var(--gold-dark)', borderRadius: '4px'}}>
+                  <p style={{fontSize: '0.95rem', color: 'var(--text-color)', lineHeight: '1.6', whiteSpace: 'pre-line'}}>
+                    <strong>[ 자원 (Resources) - 3가지 창조 ]</strong>
+                    물리적인 재산, 가보, 은신처 등 당신이 보유한 <strong>자원 3가지</strong>를 창조하십시오.
+                    자원은 이야기 속에서 잃어버리거나 다른 무언가를 얻기 위해 영구히 소비될 수 있습니다.
+                    <span style={{color: 'var(--text-light)', fontSize: '0.85rem'}}>예: 금화 주머니, 조상의 저택, 낡은 마차, 기사단장의 검 등</span>
+                  </p>
+                </div>
+                <div className="add-form">
+                  <input 
+                    type="text" 
+                    className="input-medieval" 
+                    placeholder="새 자원 입력 후 추가..."
+                    value={newResourceName}
+                    onChange={e => setNewResourceName(e.target.value)}
+                    onKeyDown={e => e.key === 'Enter' && handleAddResource()}
+                  />
+                  <button type="button" className="btn-medieval" onClick={handleAddResource} style={{padding:'0.5rem'}}>
+                    <IconPlus />
+                  </button>
+                </div>
+                <div className="item-grid" style={{marginTop: '1rem'}}>
+                  {gameState.resources.map(res => (
+                    <div key={res.id} className="item-card">
+                      <span style={{fontWeight:'500'}}>{res.name}</span>
+                      <button type="button" className="icon-btn delete" onClick={() => handleDeleteResource(res.id)}>
+                        <IconTrash />
+                      </button>
+                    </div>
+                  ))}
+                  {gameState.resources.length === 0 && <p style={{textAlign:'center', color:'var(--text-light)', width:'100%'}}>아직 추가된 자원이 없습니다.</p>}
+                </div>
+                <div style={{display: 'flex', justifyContent: 'space-between', marginTop: '1.5rem'}}>
+                  <button type="button" className="btn-gold-outline" onClick={() => setSetupTab('skills')}>⬅ 이전</button>
+                  <button type="button" className="btn-medieval" onClick={() => setSetupTab('characters')}>다음 단계 ➔</button>
+                </div>
+              </div>
+            )}
+
+            {setupTab === 'characters' && (
+              <div>
+                <div style={{marginBottom: '1.5rem', padding: '1rem', backgroundColor: 'rgba(143,117,54,0.1)', border: '1px solid var(--gold-dark)', borderRadius: '4px'}}>
+                  <p style={{fontSize: '0.95rem', color: 'var(--text-color)', lineHeight: '1.6', whiteSpace: 'pre-line'}}>
+                    <strong>[ 인물 (Characters) - 5명 창조 ]</strong>
+                    당신과 서사가 깊게 얽혀 있는 <strong>등장인물 5명</strong>을 창조하십시오.
+                    필멸자(Mortal)는 세월이 흐르면 늙어 죽지만, 불멸자(Immortal)는 영원히 존재합니다.
+                    <span style={{color: 'var(--text-light)', fontSize: '0.85rem'}}>예: 안나 (충직한 하녀 - 필멸자), 드라큘라 (나를 문 자 - 불멸자)</span>
+                  </p>
+                </div>
+                <div className="add-form" style={{flexDirection: 'column', gap: '0.5rem', alignItems: 'stretch'}}>
+                  <div style={{display: 'flex', gap: '0.5rem', alignItems: 'center'}}>
+                    <select 
+                      className="input-medieval" 
+                      style={{width: 'auto', padding: '0.4rem'}}
+                      value={newCharacterType}
+                      onChange={e => setNewCharacterType(e.target.value as 'mortal'|'immortal')}
+                    >
+                      <option value="mortal">필멸자(Mortal)</option>
+                      <option value="immortal">불멸자(Immortal)</option>
+                    </select>
+                    <input 
+                      type="text" 
+                      className="input-medieval" 
+                      style={{flex: 1}}
+                      placeholder="이름 및 관계 (예: 그레고르 신부)"
+                      value={newCharacterName}
+                      onChange={e => setNewCharacterName(e.target.value)}
+                      onKeyDown={e => e.key === 'Enter' && handleAddCharacter()}
+                    />
+                    <button type="button" className="btn-medieval" onClick={handleAddCharacter} style={{padding:'0.5rem'}}>
+                      <IconPlus />
+                    </button>
+                  </div>
+                </div>
+                <div className="item-grid" style={{marginTop: '1rem'}}>
+                  {gameState.characters.map(char => (
+                    <div key={char.id} className="item-card" style={{borderColor: char.type === 'immortal' ? 'var(--crimson-primary)' : 'var(--gold-accent)'}}>
+                      <div style={{display:'flex', flexDirection:'column', gap:'0.2rem'}}>
+                        <span style={{fontSize:'0.75rem', fontWeight:'bold', color: char.type==='immortal'?'var(--crimson-primary)':'var(--text-light)'}}>
+                          {char.type === 'immortal' ? '불멸자' : '필멸자'}
+                        </span>
+                        <span style={{fontWeight:'500'}}>{char.name}</span>
+                      </div>
+                      <button type="button" className="icon-btn delete" onClick={() => handleDeleteCharacter(char.id)}>
+                        <IconTrash />
+                      </button>
+                    </div>
+                  ))}
+                  {gameState.characters.length === 0 && <p style={{textAlign:'center', color:'var(--text-light)', width:'100%'}}>아직 추가된 인물이 없습니다.</p>}
+                </div>
+                <div style={{display: 'flex', justifyContent: 'space-between', marginTop: '1.5rem'}}>
+                  <button type="button" className="btn-gold-outline" onClick={() => setSetupTab('resources')}>⬅ 이전</button>
+                  <button type="button" className="btn-medieval" onClick={() => setSetupTab('marks')}>다음 단계 ➔</button>
+                </div>
+              </div>
+            )}
+
+            {setupTab === 'marks' && (
+              <div>
+                <div style={{marginBottom: '1.5rem', padding: '1rem', backgroundColor: 'rgba(143,117,54,0.1)', border: '1px solid var(--gold-dark)', borderRadius: '4px'}}>
+                  <p style={{fontSize: '0.95rem', color: 'var(--text-color)', lineHeight: '1.6', whiteSpace: 'pre-line'}}>
+                    <strong>[ 표식 (Marks) - 1가지 창조 ]</strong>
+                    당신이 흡혈귀가 되면서 신체나 정신에 지워지지 않게 새겨진 기이한 <strong>표식 1가지</strong>를 창조하십시오.
+                    <span style={{color: 'var(--text-light)', fontSize: '0.85rem'}}>예: 태양 아래서 살갗이 탄다, 박쥐로 변할 수 있다, 십자가를 두려워한다 등</span>
+                  </p>
+                </div>
+                <div className="add-form">
+                  <input 
+                    type="text" 
+                    className="input-medieval" 
+                    placeholder="새 표식 추가..."
+                    value={newMarkDesc}
+                    onChange={e => setNewMarkDesc(e.target.value)}
+                    onKeyDown={e => e.key === 'Enter' && handleAddMark()}
+                  />
+                  <button type="button" className="btn-medieval" onClick={handleAddMark} style={{padding:'0.5rem'}}>
+                    <IconPlus />
+                  </button>
+                </div>
+                <div className="item-grid" style={{marginTop: '1rem'}}>
+                  {gameState.marks.map(mark => (
+                    <div key={mark.id} className="item-card" style={{borderStyle:'dashed', borderColor:'var(--crimson-dark)'}}>
+                      <span style={{fontWeight:'500'}}>{mark.description}</span>
+                      <button type="button" className="icon-btn delete" onClick={() => handleDeleteMark(mark.id)}>
+                        <IconTrash />
+                      </button>
+                    </div>
+                  ))}
+                  {gameState.marks.length === 0 && <p style={{textAlign:'center', color:'var(--text-light)', width:'100%'}}>아직 추가된 표식이 없습니다.</p>}
+                </div>
+                <div style={{display: 'flex', justifyContent: 'space-between', marginTop: '1.5rem'}}>
+                  <button type="button" className="btn-gold-outline" onClick={() => setSetupTab('characters')}>⬅ 이전</button>
+                  <button type="button" className="btn-medieval" onClick={handleStartGame} style={{backgroundColor:'var(--crimson-primary)', color:'#fff'}}>연대기 시작하기 ➔</button>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     );
