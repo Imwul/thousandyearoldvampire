@@ -334,8 +334,6 @@ function App() {
       memories: prev.memories[0].experiences.length > 0 ? prev.memories : startingMemories
     }));
     setActiveTab('memories');
-    
-    if (!saved || !JSON.parse(saved).characterName) setActiveTab('setup'); else setActiveTab('memories');
   };
 
   // Roll Dice Logic (1d10 - 1d6)
