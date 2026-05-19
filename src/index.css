@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700;900&family=Cinzel:wght@400;600;700;900&family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400&family=Grenze+Gotisch:wght@500;700;900&family=Nanum+Myeongjo:wght@400;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700;900&family=Cinzel:wght@400;600;700;900&family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400&family=Eulyoo1945:wght@400;600;700&family=Grenze+Gotisch:wght@500;700;900&family=Nanum+Myeongjo:wght@400;700;800&display=swap');
 
 :root {
   --bg-parchment: #fdfbf7; /* Very clean, refined ivory aged parchment */
@@ -22,7 +22,7 @@
 }
 
 body {
-  font-family: "Pretendard", -apple-system, BlinkMacSystemFont, system-ui, "Nanum Myeongjo", sans-serif;
+  font-family: "Pretendard", -apple-system, BlinkMacSystemFont, system-ui, "Eulyoo1945", sans-serif;
   background-color: var(--ink-black);
   color: var(--text-color);
   min-height: 100vh;
@@ -285,18 +285,19 @@ h1, h2, h3, h4, .gothic-font {
 }
 
 .prompt-body {
-  font-family: "Nanum Myeongjo", "EB Garamond", serif;
+  font-family: "Eulyoo1945", "Nanum Myeongjo", "EB Garamond", serif;
   font-size: 1.15rem;
   color: var(--text-color);
-  line-height: 1.9;
+  line-height: 1.95;
   text-align: justify;
+  letter-spacing: -0.05em; /* 자간 -5% */
 }
 
 /* Elegant and highly-readable Drop Cap for Korean context */
 .prompt-body::first-letter {
-  font-family: 'Cinzel', 'Nanum Myeongjo', serif;
+  font-family: 'Cinzel', 'Eulyoo1945', serif;
   font-weight: 800;
-  font-size: 2rem;
+  font-size: 2.1rem;
   color: var(--crimson-primary);
   margin-right: 3px;
   line-height: 1;
@@ -367,13 +368,14 @@ h1, h2, h3, h4, .gothic-font {
   background: transparent;
   border: none;
   border-bottom: 1px solid rgba(197, 160, 89, 0.4);
-  font-family: "Nanum Myeongjo", serif;
+  font-family: "Eulyoo1945", "Nanum Myeongjo", serif;
   font-size: 1.05rem;
   line-height: 1.85;
   color: var(--text-color);
   resize: vertical;
   outline: none;
   padding: 0.5rem 0;
+  letter-spacing: -0.05em; /* 자간 -5% */
   /* ruled journal paper */
   background-image: linear-gradient(transparent 95%, rgba(197, 160, 89, 0.12) 95%);
   background-size: 100% 1.85em;
@@ -595,10 +597,11 @@ h1, h2, h3, h4, .gothic-font {
 }
 
 .timeline-content p {
-  font-family: "Nanum Myeongjo", serif;
+  font-family: "Eulyoo1945", "Nanum Myeongjo", serif;
   font-size: 1rem;
   line-height: 1.8;
   color: var(--text-color);
+  letter-spacing: -0.05em; /* 자간 -5% */
 }
 
 .timeline-meta {
