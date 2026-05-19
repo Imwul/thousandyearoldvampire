@@ -1585,7 +1585,10 @@ function App() {
               </div>
             </div>
             <div className="item-grid" style={{marginTop: '1.5rem'}}>
-              {gameState.characters.map(char => (
+              {[...gameState.characters].sort((a, b) => {
+                if (a.isAlive === b.isAlive) return 0;
+                return a.isAlive ? -1 : 1;
+              }).map(char => (
                 <div key={char.id} className={`item-card ${!char.isAlive ? 'dead' : ''}`} style={{borderColor: char.type === 'immortal' ? 'var(--crimson-primary)' : 'var(--gold-accent)'}}>
                   <div style={{display:'flex', flexDirection:'column', gap:'0.2rem', flex: 1}}>
                     <span style={{fontSize:'0.75rem', fontWeight:'bold', color: char.type==='immortal'?'var(--crimson-primary)':'var(--text-light)'}}>
