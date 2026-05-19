@@ -780,7 +780,7 @@ function App() {
       <header className="app-header" style={{flexDirection: 'row', justifyContent: 'space-between', width:'100%', paddingBottom:'0.5rem'}}>
         <div style={{textAlign: 'left'}}>
           <h2 style={{fontSize: '1.5rem', color:'var(--crimson-primary)'}} className="gothic-font">천년 동안 살아온 흡혈귀</h2>
-          <span className="english-gothic" style={{fontSize:'1.2rem', color: 'var(--gold-dark)', marginTop: '0.2rem'}}>Chronicle of <strong>{gameState.characterName}</strong></span>
+          <span className="english-gothic" style={{fontSize:'1.2rem', color: 'var(--gold-dark)', marginTop: '0.2rem', fontWeight: 400}}>Chronicle of {gameState.characterName}</span>
         </div>
         
         <div className="action-btn-group" style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
