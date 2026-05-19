@@ -886,7 +886,7 @@ function App() {
         <div style={{textAlign: 'left'}}>
           <h2 style={{fontSize: '1.5rem', color:'var(--crimson-primary)'}} className="gothic-font">천년령 흡혈귀</h2>
           <span className="english-gothic" style={{fontSize:'1.2rem', color: 'var(--gold-dark)', marginTop: '0.2rem', fontWeight: 400}}>
-            {gameState.characterName ? `Chronicle of ${gameState.characterName}` : 'Thousand Year Old Vampire'}
+            Thousand Year Old Vampire
           </span>
         </div>
         
