@@ -1,4 +1,7 @@
-@import url('https://fonts.googleapis.com/css2?family=Eulyoo1945:wght@400;600;700&family=Grenze+Gotisch:wght@500;700;900&family=Nanum+Myeongjo:wght@400;700;800&family=UnifrakturMaguntia&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Eulyoo1945:wght@400;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=UnifrakturMaguntia&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Grenze+Gotisch:wght@500;700;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Nanum+Myeongjo:wght@400;700;800&display=swap');
 
 :root {
   --bg-parchment: #fdfbf7; /* Refined ivory aged parchment */
