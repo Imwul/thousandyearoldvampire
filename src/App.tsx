@@ -113,6 +113,10 @@ function App() {
   const [editingJournalId, setEditingJournalId] = useState<string | null>(null);
   const [editingJournalText, setEditingJournalText] = useState<string>('');
 
+  // Experience editing states
+  const [editingExperienceId, setEditingExperienceId] = useState<string | null>(null);
+  const [editingExperienceText, setEditingExperienceText] = useState<string>('');
+
   const [user, setUser] = useState<User | null>(null);
 
   // Firebase Auth Listener
@@ -461,6 +465,39 @@ function App() {
         return m;
       })
     }));
+  };
+
+  const handleStartEditExperience = (expId: string, text: string) => {
+    setEditingExperienceId(expId);
+    setEditingExperienceText(text);
+  };
+
+  const handleCancelEditExperience = () => {
+    setEditingExperienceId(null);
+    setEditingExperienceText('');
+  };
+
+  const handleSaveEditExperience = (memoryId: string, expId: string) => {
+    if (!editingExperienceText.trim()) {
+      alert('경험 내용을 입력해주세요.');
+      return;
+    }
+    setGameState(prev => ({
+      ...prev,
+      memories: prev.memories.map(m => {
+        if (m.id === memoryId) {
+          return {
+            ...m,
+            experiences: m.experiences.map(e =>
+              e.id === expId ? { ...e, text: editingExperienceText.trim() } : e
+            )
+          };
+        }
+        return m;
+      })
+    }));
+    setEditingExperienceId(null);
+    setEditingExperienceText('');
   };
 
   // Offload entire Memory to Diary
@@ -1020,11 +1057,68 @@ function App() {
                     
                     <ul className="experience-list">
                       {mem.experiences.map(exp => (
-                        <li key={exp.id} className="experience-item">
-                          <span>{exp.text}</span>
-                          <button className="icon-btn delete" title="잊어버리기(삭제)" onClick={() => handleDeleteExperience(mem.id, exp.id)}>
-                            <IconTrash />
-                          </button>
+                        <li key={exp.id} className="experience-item" style={{ flexDirection: 'column', alignItems: 'stretch' }}>
+                          {editingExperienceId === exp.id ? (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', width: '100%' }}>
+                              <input
+                                type="text"
+                                className="input-medieval"
+                                style={{
+                                  width: '100%',
+                                  fontSize: '0.9rem',
+                                  padding: '0.3rem 0.5rem',
+                                  backgroundColor: 'rgba(255, 255, 255, 0.8)',
+                                  border: '1px solid var(--gold-accent)',
+                                  borderRadius: '2px',
+                                  fontFamily: 'inherit'
+                                }}
+                                value={editingExperienceText}
+                                onChange={e => setEditingExperienceText(e.target.value)}
+                                onKeyDown={e => {
+                                  if (e.key === 'Enter') handleSaveEditExperience(mem.id, exp.id);
+                                  if (e.key === 'Escape') handleCancelEditExperience();
+                                }}
+                                autoFocus
+                              />
+                              <div style={{ display: 'flex', gap: '0.4rem', justifyContent: 'flex-end' }}>
+                                <button
+                                  className="btn-gold-outline"
+                                  style={{ padding: '0.15rem 0.5rem', fontSize: '0.75rem' }}
+                                  onClick={handleCancelEditExperience}
+                                >
+                                  취소
+                                </button>
+                                <button
+                                  className="btn-medieval"
+                                  style={{ padding: '0.15rem 0.5rem', fontSize: '0.75rem', minHeight: 'auto' }}
+                                  onClick={() => handleSaveEditExperience(mem.id, exp.id)}
+                                >
+                                  저장
+                                </button>
+                              </div>
+                            </div>
+                          ) : (
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', gap: '0.5rem' }}>
+                              <span>{exp.text}</span>
+                              <div style={{ display: 'flex', gap: '0.2rem', flexShrink: 0 }}>
+                                <button 
+                                  className="icon-btn" 
+                                  title="경험 수정" 
+                                  style={{ color: 'var(--gold-dark)' }}
+                                  onClick={() => handleStartEditExperience(exp.id, exp.text)}
+                                >
+                                  <IconEdit />
+                                </button>
+                                <button 
+                                  className="icon-btn delete" 
+                                  title="잊어버리기(삭제)" 
+                                  onClick={() => handleDeleteExperience(mem.id, exp.id)}
+                                >
+                                  <IconTrash />
+                                </button>
+                              </div>
+                            </div>
+                          )}
                         </li>
                       ))}
                       {mem.experiences.length === 0 && (
