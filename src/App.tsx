@@ -118,6 +118,19 @@ function App() {
   const [editingExperienceId, setEditingExperienceId] = useState<string | null>(null);
   const [editingExperienceText, setEditingExperienceText] = useState<string>('');
 
+  // Inline editing states for lists
+  const [editingSkillId, setEditingSkillId] = useState<string | null>(null);
+  const [editingSkillText, setEditingSkillText] = useState<string>('');
+  
+  const [editingResourceId, setEditingResourceId] = useState<string | null>(null);
+  const [editingResourceText, setEditingResourceText] = useState<string>('');
+  
+  const [editingCharacterId, setEditingCharacterId] = useState<string | null>(null);
+  const [editingCharacterText, setEditingCharacterText] = useState<string>('');
+  
+  const [editingMarkId, setEditingMarkId] = useState<string | null>(null);
+  const [editingMarkText, setEditingMarkText] = useState<string>('');
+
   const [user, setUser] = useState<User | null>(null);
 
   // Firebase Auth Listener
@@ -626,6 +639,59 @@ function App() {
       ...prev,
       marks: prev.marks.filter(m => m.id !== id)
     }));
+  };
+
+  // Inline editing handlers for lists
+  const handleStartEditSkill = (id: string, name: string) => {
+    setEditingSkillId(id);
+    setEditingSkillText(name);
+  };
+  const handleSaveEditSkill = (id: string) => {
+    if (!editingSkillText.trim()) return;
+    setGameState(prev => ({
+      ...prev,
+      skills: prev.skills.map(s => s.id === id ? { ...s, name: editingSkillText.trim() } : s)
+    }));
+    setEditingSkillId(null);
+  };
+
+  const handleStartEditResource = (id: string, name: string) => {
+    setEditingResourceId(id);
+    setEditingResourceText(name);
+  };
+  const handleSaveEditResource = (id: string) => {
+    if (!editingResourceText.trim()) return;
+    setGameState(prev => ({
+      ...prev,
+      resources: prev.resources.map(r => r.id === id ? { ...r, name: editingResourceText.trim() } : r)
+    }));
+    setEditingResourceId(null);
+  };
+
+  const handleStartEditCharacter = (id: string, name: string) => {
+    setEditingCharacterId(id);
+    setEditingCharacterText(name);
+  };
+  const handleSaveEditCharacter = (id: string) => {
+    if (!editingCharacterText.trim()) return;
+    setGameState(prev => ({
+      ...prev,
+      characters: prev.characters.map(c => c.id === id ? { ...c, name: editingCharacterText.trim() } : c)
+    }));
+    setEditingCharacterId(null);
+  };
+
+  const handleStartEditMark = (id: string, desc: string) => {
+    setEditingMarkId(id);
+    setEditingMarkText(desc);
+  };
+  const handleSaveEditMark = (id: string) => {
+    if (!editingMarkText.trim()) return;
+    setGameState(prev => ({
+      ...prev,
+      marks: prev.marks.map(m => m.id === id ? { ...m, description: editingMarkText.trim() } : m)
+    }));
+    setEditingMarkId(null);
   };
 
   // 6. Journal Entries
@@ -1154,18 +1220,47 @@ function App() {
             <div className="item-grid" style={{marginTop: '1.5rem'}}>
               {gameState.skills.map(skill => (
                 <div key={skill.id} className={`item-card ${skill.isChecked ? 'checked' : ''}`}>
-                  <div style={{display:'flex', alignItems:'center', gap:'0.75rem'}}>
+                  <div style={{display:'flex', alignItems:'center', gap:'0.75rem', flex: 1}}>
                     <input 
                       type="checkbox" 
                       checked={skill.isChecked} 
                       onChange={() => handleToggleSkill(skill.id)}
                       style={{width:'18px', height:'18px', cursor:'pointer'}}
                     />
-                    <span style={{fontWeight:'500'}}>{skill.name}</span>
+                    {editingSkillId === skill.id ? (
+                      <input
+                        type="text"
+                        className="input-medieval"
+                        style={{flex: 1, padding: '0.2rem 0.5rem', fontSize: '0.95rem'}}
+                        value={editingSkillText}
+                        onChange={e => setEditingSkillText(e.target.value)}
+                        onKeyDown={e => e.key === 'Enter' && handleSaveEditSkill(skill.id)}
+                        autoFocus
+                      />
+                    ) : (
+                      <span style={{fontWeight:'500'}}>
+                        {skill.isAncient && <span style={{fontSize:'0.75rem', color:'var(--crimson-primary)', marginRight:'0.3rem', fontWeight:'bold'}}>[고대]</span>}
+                        {skill.name}
+                      </span>
+                    )}
                   </div>
-                  <button className="icon-btn delete" onClick={() => handleDeleteSkill(skill.id)}>
-                    <IconTrash />
-                  </button>
+                  <div style={{display:'flex', gap:'0.3rem'}}>
+                    {editingSkillId === skill.id ? (
+                      <>
+                        <button className="btn-medieval" style={{padding:'0.2rem 0.5rem', fontSize:'0.8rem'}} onClick={() => handleSaveEditSkill(skill.id)}>저장</button>
+                        <button className="btn-gold-outline" style={{padding:'0.2rem 0.5rem', fontSize:'0.8rem'}} onClick={() => setEditingSkillId(null)}>취소</button>
+                      </>
+                    ) : (
+                      <>
+                        <button className="icon-btn edit" onClick={() => handleStartEditSkill(skill.id, skill.name)}>
+                          <IconEdit />
+                        </button>
+                        <button className="icon-btn delete" onClick={() => handleDeleteSkill(skill.id)}>
+                          <IconTrash />
+                        </button>
+                      </>
+                    )}
+                  </div>
                 </div>
               ))}
               {gameState.skills.length === 0 && <p style={{textAlign:'center', color:'var(--text-light)', width:'100%'}}>아직 보유한 기술이 없습니다.</p>}
@@ -1207,15 +1302,41 @@ function App() {
             <div className="item-grid" style={{marginTop: '1.5rem'}}>
               {gameState.resources.map(res => (
                 <div key={res.id} className="item-card">
-                  <div style={{display:'flex', flexDirection:'column', gap:'0.2rem'}}>
+                  <div style={{display:'flex', flexDirection:'column', gap:'0.2rem', flex: 1}}>
                     <span style={{fontSize:'0.75rem', fontWeight:'bold', color: res.isStationary ? 'var(--crimson-primary)' : 'var(--text-light)'}}>
                       {res.isStationary ? '고정 자원 (Stationary)' : '이동 가능'}
                     </span>
-                    <span style={{fontWeight:'500'}}>{res.name}</span>
+                    {editingResourceId === res.id ? (
+                      <input
+                        type="text"
+                        className="input-medieval"
+                        style={{width: '90%', padding: '0.2rem 0.5rem', fontSize: '0.95rem', marginTop: '0.2rem'}}
+                        value={editingResourceText}
+                        onChange={e => setEditingResourceText(e.target.value)}
+                        onKeyDown={e => e.key === 'Enter' && handleSaveEditResource(res.id)}
+                        autoFocus
+                      />
+                    ) : (
+                      <span style={{fontWeight:'500'}}>{res.name}</span>
+                    )}
                   </div>
-                  <button className="icon-btn delete" onClick={() => handleDeleteResource(res.id)}>
-                    <IconTrash />
-                  </button>
+                  <div style={{display:'flex', gap:'0.3rem'}}>
+                    {editingResourceId === res.id ? (
+                      <>
+                        <button className="btn-medieval" style={{padding:'0.2rem 0.5rem', fontSize:'0.8rem'}} onClick={() => handleSaveEditResource(res.id)}>저장</button>
+                        <button className="btn-gold-outline" style={{padding:'0.2rem 0.5rem', fontSize:'0.8rem'}} onClick={() => setEditingResourceId(null)}>취소</button>
+                      </>
+                    ) : (
+                      <>
+                        <button className="icon-btn edit" onClick={() => handleStartEditResource(res.id, res.name)}>
+                          <IconEdit />
+                        </button>
+                        <button className="icon-btn delete" onClick={() => handleDeleteResource(res.id)}>
+                          <IconTrash />
+                        </button>
+                      </>
+                    )}
+                  </div>
                 </div>
               ))}
               {gameState.resources.length === 0 && <p style={{textAlign:'center', color:'var(--text-light)', width:'100%'}}>아직 보유한 자원이 없습니다.</p>}
@@ -1263,21 +1384,45 @@ function App() {
             <div className="item-grid" style={{marginTop: '1.5rem'}}>
               {gameState.characters.map(char => (
                 <div key={char.id} className={`item-card ${!char.isAlive ? 'dead' : ''}`} style={{borderColor: char.type === 'immortal' ? 'var(--crimson-primary)' : 'var(--gold-accent)'}}>
-                  <div style={{display:'flex', flexDirection:'column', gap:'0.2rem'}}>
+                  <div style={{display:'flex', flexDirection:'column', gap:'0.2rem', flex: 1}}>
                     <span style={{fontSize:'0.75rem', fontWeight:'bold', color: char.type==='immortal'?'var(--crimson-primary)':'var(--text-light)'}}>
                       {char.type === 'immortal' ? '불멸자' : '필멸자'} {char.isAlive ? '' : '(사망/소실)'}
                     </span>
-                    <span style={{fontWeight:'500'}}>{char.name}</span>
-                  </div>
-                  <div style={{display:'flex', gap:'0.4rem'}}>
-                    {char.isAlive && (
-                      <button className="icon-btn delete" style={{fontSize:'0.8rem'}} onClick={() => handleKillCharacter(char.id)}>
-                        ☠️
-                      </button>
+                    {editingCharacterId === char.id ? (
+                      <input
+                        type="text"
+                        className="input-medieval"
+                        style={{width: '90%', padding: '0.2rem 0.5rem', fontSize: '0.95rem', marginTop: '0.2rem'}}
+                        value={editingCharacterText}
+                        onChange={e => setEditingCharacterText(e.target.value)}
+                        onKeyDown={e => e.key === 'Enter' && handleSaveEditCharacter(char.id)}
+                        autoFocus
+                      />
+                    ) : (
+                      <span style={{fontWeight:'500'}}>{char.name}</span>
                     )}
-                    <button className="icon-btn delete" onClick={() => handleDeleteCharacter(char.id)}>
-                      <IconTrash />
-                    </button>
+                  </div>
+                  <div style={{display:'flex', gap:'0.4rem', alignItems: 'center'}}>
+                    {editingCharacterId === char.id ? (
+                      <>
+                        <button className="btn-medieval" style={{padding:'0.2rem 0.5rem', fontSize:'0.8rem'}} onClick={() => handleSaveEditCharacter(char.id)}>저장</button>
+                        <button className="btn-gold-outline" style={{padding:'0.2rem 0.5rem', fontSize:'0.8rem'}} onClick={() => setEditingCharacterId(null)}>취소</button>
+                      </>
+                    ) : (
+                      <>
+                        <button className="icon-btn edit" onClick={() => handleStartEditCharacter(char.id, char.name)}>
+                          <IconEdit />
+                        </button>
+                        {char.isAlive && (
+                          <button className="icon-btn delete" style={{fontSize:'0.8rem'}} onClick={() => handleKillCharacter(char.id)}>
+                            ☠️
+                          </button>
+                        )}
+                        <button className="icon-btn delete" onClick={() => handleDeleteCharacter(char.id)}>
+                          <IconTrash />
+                        </button>
+                      </>
+                    )}
                   </div>
                 </div>
               ))}
@@ -1313,10 +1458,38 @@ function App() {
             <div className="item-grid" style={{marginTop: '1.5rem'}}>
               {gameState.marks.map(mark => (
                 <div key={mark.id} className="item-card" style={{borderStyle:'dashed', borderColor:'var(--crimson-dark)'}}>
-                  <span style={{fontWeight:'500'}}>{mark.description}</span>
-                  <button className="icon-btn delete" onClick={() => handleDeleteMark(mark.id)}>
-                    <IconTrash />
-                  </button>
+                  <div style={{flex: 1}}>
+                    {editingMarkId === mark.id ? (
+                      <input
+                        type="text"
+                        className="input-medieval"
+                        style={{width: '95%', padding: '0.2rem 0.5rem', fontSize: '0.95rem'}}
+                        value={editingMarkText}
+                        onChange={e => setEditingMarkText(e.target.value)}
+                        onKeyDown={e => e.key === 'Enter' && handleSaveEditMark(mark.id)}
+                        autoFocus
+                      />
+                    ) : (
+                      <span style={{fontWeight:'500'}}>{mark.description}</span>
+                    )}
+                  </div>
+                  <div style={{display:'flex', gap:'0.3rem'}}>
+                    {editingMarkId === mark.id ? (
+                      <>
+                        <button className="btn-medieval" style={{padding:'0.2rem 0.5rem', fontSize:'0.8rem'}} onClick={() => handleSaveEditMark(mark.id)}>저장</button>
+                        <button className="btn-gold-outline" style={{padding:'0.2rem 0.5rem', fontSize:'0.8rem'}} onClick={() => setEditingMarkId(null)}>취소</button>
+                      </>
+                    ) : (
+                      <>
+                        <button className="icon-btn edit" onClick={() => handleStartEditMark(mark.id, mark.description)}>
+                          <IconEdit />
+                        </button>
+                        <button className="icon-btn delete" onClick={() => handleDeleteMark(mark.id)}>
+                          <IconTrash />
+                        </button>
+                      </>
+                    )}
+                  </div>
                 </div>
               ))}
               {gameState.marks.length === 0 && <p style={{textAlign:'center', color:'var(--text-light)', width:'100%'}}>아직 새겨진 표식이 없습니다.</p>}
