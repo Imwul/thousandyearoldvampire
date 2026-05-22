@@ -262,6 +262,19 @@ function App() {
       }
     }, (error: any) => {
       console.error("Firebase sync error:", error);
+      if (error.code === 'permission-denied') {
+        alert(
+          "동기화 오류: Firestore 데이터베이스 접근 권한이 거부되었습니다.\n\n" +
+          "해결 방법:\n" +
+          "1. Firebase 콘솔(console.firebase.google.com) ➡️ Cloud Firestore ➡️ [Rules(규칙)] 탭으로 이동합니다.\n" +
+          "2. rules에 'match /vampire_saves/{userId}' 경로 규칙을 추가해야 합니다.\n\n" +
+          "예시 구문:\n" +
+          "match /vampire_saves/{userId} {\n  allow read, write: if true;\n}\n\n" +
+          "3. 규칙을 수정하고 [게시] 버튼을 클릭해 주십시오."
+        );
+      } else {
+        alert("동기화 중 오류가 발생했습니다: " + (error.message || "알 수 없는 오류"));
+      }
     });
     return () => unsubscribe();
   }, [user]);
