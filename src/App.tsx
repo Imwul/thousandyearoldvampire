@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { gamePrompts, PromptEntry } from './data/prompts';
 import { alternatePrompts } from './data/alternatePrompts';
 import { GameState, Memory, Experience, Skill, Resource, Character, Mark, DiaryEntry, JournalEntry } from './types';
@@ -158,6 +158,7 @@ function App() {
   const [editingMarkDesc, setEditingMarkDesc] = useState<string>('');
 
   const [user, setUser] = useState<User | null>(null);
+  const isSyncInitializedRef = useRef(false);
 
   // Firebase Auth Listener
   useEffect(() => {
@@ -185,7 +186,12 @@ function App() {
 
   // Firebase Real-time Sync Listener
   useEffect(() => {
-    if (!user || !db) return;
+    if (!user || !db) {
+      isSyncInitializedRef.current = false;
+      return;
+    }
+    isSyncInitializedRef.current = false; // Reset on user change
+    
     const docRef = doc(db as any, 'vampire_saves', user.uid);
     const unsubscribe = onSnapshot(docRef, (docSnap: any) => {
       if (docSnap.exists()) {
@@ -194,11 +200,46 @@ function App() {
           try {
             const localStr = localStorage.getItem(LOCAL_STORAGE_KEY);
             if (localStr === data.gameState) {
+              isSyncInitializedRef.current = true;
               return; // Already in sync, avoid triggering state update to prevent loops
             }
             const parsed = JSON.parse(data.gameState);
+
+            // Handle Sync Conflicts on login / initial load
+            if (!isSyncInitializedRef.current) {
+              isSyncInitializedRef.current = true;
+              
+              let localParsed: any = null;
+              if (localStr) {
+                try { localParsed = JSON.parse(localStr); } catch (e) {}
+              }
+
+              // Both local state and cloud state exist and differ
+              if (localParsed && localParsed.characterName && parsed && parsed.characterName) {
+                const selectCloud = window.confirm(
+                  "동기화 충돌 감지:\n\n" +
+                  "현재 브라우저(노트북)에 저장된 세이브와 클라우드(구글 계정)에 저장된 세이브가 서로 다릅니다.\n\n" +
+                  "[확인] 클라우드 세이브 불러오기\n" +
+                  "(주의: 현재 기기의 진행 상황 '" + localParsed.characterName + "'은(는) 소실되고 클라우드의 '" + parsed.characterName + "' 데이터로 대체됩니다)\n\n" +
+                  "[취소] 현재 기기의 세이브를 클라우드에 덮어쓰기\n" +
+                  "(주의: 클라우드에 저장된 '" + parsed.characterName + "' 데이터가 지워지고 현재 기기의 '" + localParsed.characterName + "' 데이터가 저장됩니다)"
+                );
+
+                if (selectCloud) {
+                  setGameState(parsed);
+                  localStorage.setItem(LOCAL_STORAGE_KEY, data.gameState);
+                } else {
+                  // Upload local state to cloud immediately to resolve
+                  setDoc(docRef, { gameState: localStr }, { merge: true })
+                    .catch((err: any) => console.error("Initial overwrite cloud save failed:", err));
+                }
+                return;
+              }
+            }
+
             setGameState(parsed);
             if (!parsed.characterName) setActiveTab('setup'); else setActiveTab('memories');
+            isSyncInitializedRef.current = true;
           } catch (e) {
             console.error("Failed to parse synced state", e);
           }
@@ -217,6 +258,7 @@ function App() {
             console.error("Failed to parse localStr during seeding", e);
           }
         }
+        isSyncInitializedRef.current = true;
       }
     }, (error: any) => {
       console.error("Firebase sync error:", error);
@@ -316,7 +358,24 @@ function App() {
       }
     } catch (error: any) {
       console.error("Login failed:", error);
-      alert("로그인 실패: " + (error.message || "알 수 없는 오류"));
+      if (error.code === 'auth/unauthorized-domain') {
+        alert(
+          "로그인 실패: 이 도메인(" + window.location.hostname + ")은 Firebase Authentication의 승인된 도메인(Authorized Domains) 목록에 등록되어 있지 않습니다.\n\n" +
+          "해결 방법:\n" +
+          "1. Firebase 콘솔(console.firebase.google.com)에 로그인하고 해당 프로젝트(skogsduvasbookshop)로 들어갑니다.\n" +
+          "2. 왼쪽 메뉴에서 [Authentication] -> [Settings] 탭 -> [Authorized domains]로 이동합니다.\n" +
+          "3. [도메인 추가]를 클릭하여 '" + window.location.hostname + "' 도메인을 추가해주십시오."
+        );
+      } else if (error.code === 'auth/operation-not-allowed') {
+        alert(
+          "로그인 실패: Google 로그인 제공업체(Sign-in provider)가 Firebase 콘솔에서 활성화되어 있지 않습니다.\n\n" +
+          "해결 방법:\n" +
+          "1. Firebase 콘솔 -> [Authentication] -> [Sign-in method]로 이동합니다.\n" +
+          "2. [Google] 로그인 옵션을 활성화해주십시오."
+        );
+      } else {
+        alert("로그인 실패: " + (error.message || "알 수 없는 오류"));
+      }
     }
   };
 
