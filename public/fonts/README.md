@@ -1,14 +1,14 @@
 # App fonts
 
-These fonts are bundled locally so the interface does not depend on a third-party font service. Each font is distributed under the SIL Open Font License 1.1; its original license is included alongside the font.
+The interface uses two contemporary sans-serif families, bundled locally so typography does not depend on a third-party font service. Both fonts are distributed under the SIL Open Font License 1.1. Their original licenses are included beside the binaries.
 
-Downloaded from the official [Google Fonts repository](https://github.com/google/fonts) on 2026-10-20:
+Downloaded without modification from the official upstream repositories on 2026-10-20:
 
-| File | Upstream source | Original SHA-256 |
+| Local file | Official upstream binary | SHA-256 |
 | --- | --- | --- |
-| Fraunces-Variable.woff2 | [Fraunces](https://github.com/google/fonts/tree/main/ofl/fraunces), `Fraunces[SOFT,WONK,opsz,wght].ttf` | `177ff6c0f14e5550a3c624247cd1189611d4eb65d000b14944c63d967958abbb` |
-| Manrope-Variable.woff2 | [Manrope](https://github.com/google/fonts/tree/main/ofl/manrope), `Manrope[wght].ttf` | `3ae11c49db0455a3cc33e37d380f20fdb8c7f8b41dc07625c177e3d87a9d6ae6` |
-| GowunBatang-Regular.woff2 | [Gowun Batang](https://github.com/google/fonts/tree/main/ofl/gowunbatang), `GowunBatang-Regular.ttf` | `466c593e7147412e748af4856d5ad14709b5a860bdf62b9c2546f2c5874e9849` |
-| GowunDodum-Regular.woff2 | [Gowun Dodum](https://github.com/google/fonts/tree/main/ofl/gowundodum), `GowunDodum-Regular.ttf` | `a6e457933227483a11758fd0947bc74422a106d46f0bf057fdaa5af94a30067d` |
+| Geist-Variable.woff2 | [Vercel Geist](https://github.com/vercel/geist-font/blob/main/fonts/Geist/webfonts/Geist%5Bwght%5D.woff2) | `2ffebe993e969069a9789d15164b7715d42491b5835516c5e3b935d5f81b05f1` |
+| SUIT-Variable.woff2 | [Sun Typeface SUIT](https://github.com/sun-typeface/SUIT/blob/main/fonts/variable/woff2/SUIT-Variable.woff2) | `aa894a204d5a6fbae259dac6868d350cbd373a390caee0313f92946af741df23` |
 
-Converted from TTF to WOFF2 with FontTools 4.67.0 and Brotli, retaining the original character maps and glyph counts. No glyph subset was applied. Both Korean fonts retain all 11,172 modern Hangul syllables. Total compressed font size: 1,229,852 bytes.
+Both variable fonts support weights 100–900. Total binary size: 694,296 bytes. No additional subsetting or conversion was applied. SUIT includes the upstream common Korean syllable set; other Korean characters use the interface's system-font fallback.
+
+Licenses: [Geist OFL](Geist-OFL.txt), [SUIT OFL](SUIT-OFL.txt).
