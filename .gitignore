@@ -17,6 +17,10 @@ dist-ssr
 *.py
 *.txt
 *.json
+!package.json
+!package-lock.json
+!tsconfig*.json
+!vercel.json
 
 # Editor directories and files
 .vscode/*

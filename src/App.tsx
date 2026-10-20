@@ -1,1972 +1,729 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { gamePrompts, PromptEntry } from './data/prompts';
+import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
+import { ArrowDownToLine, ArrowRight, ArrowUpFromLine, BookOpen, Check, ChevronRight, CircleHelp, Cloud, Feather, Fingerprint, Gem, History, Library, LogIn, LogOut, Moon, Plus, RotateCcw, ScrollText, Settings2, Sparkles, Sword, Trash2, Users, X } from 'lucide-react';
+import * as rules from './game';
 import { alternatePrompts } from './data/alternatePrompts';
-import { GameState, Memory, Experience, Skill, Resource, Character, Mark, DiaryEntry, JournalEntry } from './types';
-
-// --- Firebase Authentication & Firestore Sync ---
-import { auth, db, googleProvider } from './firebase';
-import { signInWithPopup, signOut, onAuthStateChanged, type User } from 'firebase/auth';
-import { doc, onSnapshot, setDoc } from 'firebase/firestore';
-import { LogIn, LogOut } from 'lucide-react';
-
-
-// --- Inline SVG Icons for Complete Offline Standalone Theme ---
-const IconScroll = () => (
-  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
-);
-const IconDices = () => (
-  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="7" width="10" height="10" rx="2" ry="2"/><rect x="12" y="7" width="10" height="10" rx="2" ry="2" transform="rotate(15 17 12)"/><circle cx="7" cy="12" r="1"/><circle cx="15" cy="10" r="1"/><circle cx="19" cy="14" r="1"/></svg>
-);
-const IconFeather = () => (
-  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20.24 12.24a6 6 0 0 0-8.49-8.49L5 10.5V19h8.5z"/><line x1="16" y1="8" x2="2" y2="22"/><line x1="17.5" y1="15" x2="9" y2="15"/></svg>
-);
-const IconBook = () => (
-  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
-);
-const IconSword = () => (
-  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="14.5 17.5 3 6 3 3 6 3 17.5 14.5"/><line x1="13" y1="19" x2="19" y2="13"/><line x1="16" y1="16" x2="20" y2="20"/><line x1="19" y1="21" x2="21" y2="19"/></svg>
-);
-const IconCoins = () => (
-  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="8" cy="8" r="6"/><circle cx="18" cy="18" r="4"/><path d="M12 14a6 6 0 0 1 6-6"/></svg>
-);
-const IconUsers = () => (
-  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-);
-const IconSkull = () => (
-  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2C7.58 2 4 5.58 4 10c0 2.83 1.47 5.31 3.68 6.74l-.68 3.38a1 1 0 0 0 .98 1.2h8.04a1 1 0 0 0 .98-1.2l-.68-3.38C18.53 15.31 20 12.83 20 10c0-4.42-3.58-8-8-8z"/><line x1="9" y1="10" x2="9.01" y2="10"/><line x1="15" y1="10" x2="15.01" y2="10"/><path d="M10 16h4"/></svg>
-);
-const IconPlus = () => (
-  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-);
-const IconTrash = () => (
-  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
-);
-const IconArchive = () => (
-  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="21 8 21 21 3 21 3 8"/><rect x="1" y="3" width="22" height="5"/><line x1="10" y1="12" x2="14" y2="12"/></svg>
-);
-const IconHistory = () => (
-  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><polyline points="3 3 3 8 8 8"/><polyline points="12 7 12 12 16 14"/></svg>
-);
-const IconReset = () => (
-  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
-);
-
-const IconEdit = () => (
-  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 1 1 3 3L12 15l-4 1 1-4z"/></svg>
-);
-
-const GoogleIcon = () => (
-  <svg width="14" height="14" viewBox="0 0 24 24" style={{ marginRight: '4px' }}>
-    <path fill="#EA4335" d="M12.24 10.285V14.4h6.887c-.648 2.41-2.519 4.114-5.136 4.114-3.51 0-6.357-2.847-6.357-6.357s2.847-6.357 6.357-6.357c1.623 0 3.096.61 4.237 1.62l3.056-3.056C19.223 2.507 15.938 1 12.24 1 6.033 1 1 6.033 1 12.24s5.033 11.24 11.24 11.24c5.897 0 10.867-4.148 10.867-11.24 0-.568-.06-1.125-.174-1.668H12.24z"/>
-  </svg>
-);
-
-const LOCAL_STORAGE_KEY = 'athousandyearoldvampire_savegame';
-
-// Create 5 empty memory slots
-const createInitialMemories = (): Memory[] => [
-  { id: 'm1', experiences: [] },
-  { id: 'm2', experiences: [] },
-  { id: 'm3', experiences: [] },
-  { id: 'm4', experiences: [] },
-  { id: 'm5', experiences: [] },
-];
-
-const initialGameState: GameState = {
-  currentPromptId: 1,
-  promptVisitHistory: { 1: 1 }, // Initialized to prompt 1, visited 1 time
-  memories: createInitialMemories(),
-  diary: [],
-  skills: [],
-  resources: [],
-  characters: [],
-  marks: [],
-  journal: [],
-  isGameOver: false,
-  gameOverText: '',
-  characterName: '',
-  vampireOrigin: '',
-  isAltActive: false,
-  activeAltIdx: null,
+import type { GameState, Memory } from './types';
+import { SAVE_KEY, useGameSave } from './useGameSave';
+type Page = 'play' | 'memories' | 'skills' | 'resources' | 'characters' | 'marks' | 'diary' | 'journal' | 'rules';
+type Entity = 'skills' | 'resources' | 'characters' | 'marks';
+type Editor = {
+  kind: Entity;
+  id?: string;
+  text: string;
+  stationary: boolean;
+  immortal: boolean;
 };
-
-const parseTextWithDescription = (text: string): { title: string; desc: string } => {
-  const colonIndex = text.indexOf(':') !== -1 ? text.indexOf(':') : text.indexOf('：');
-  if (colonIndex === -1) {
-    return { title: text.trim(), desc: '' };
+type Confirmation = {
+  title: string;
+  text: string;
+  action: () => void;
+};
+type Setup = {
+  name: string;
+  origin: string;
+  skills: string;
+  resources: string;
+  mortals: string;
+  immortal: string;
+  mark: string;
+  memories: string[];
+  mode: 'quick' | 'journal';
+};
+const uid = () => crypto.randomUUID();
+const lines = (value: string) => value.split('\n').map(line => line.trim()).filter(Boolean);
+const readDraft = (key: string) => {
+  try {
+    return localStorage.getItem(`${SAVE_KEY}_${key}`) ?? '';
+  } catch {
+    return '';
   }
-  return {
-    title: text.substring(0, colonIndex).trim(),
-    desc: text.substring(colonIndex + 1).trim()
-  };
 };
-
-function App() {
-  const [gameState, setGameState] = useState<GameState>(initialGameState);
-  const [activeTab, setActiveTab] = useState<'setup' | 'memories' | 'skills' | 'resources' | 'characters' | 'marks' | 'diary' | 'manual'>('setup');
-  
-  // Dice and Action states
-  const [d10Val, setD10Val] = useState<number | null>(null);
-  const [d6Val, setD6Val] = useState<number | null>(null);
-  const [isRolling, setIsRolling] = useState(false);
-  
-  // Editor input states
-  const [currentJournalText, setCurrentJournalText] = useState('');
-  const [newExperienceInputs, setNewExperienceInputs] = useState<Record<string, string>>({});
-  const [newSkillName, setNewSkillName] = useState('');
-  const [newSkillDesc, setNewSkillDesc] = useState('');
-  const [newResourceName, setNewResourceName] = useState('');
-  const [newResourceDesc, setNewResourceDesc] = useState('');
-  const [newCharacterName, setNewCharacterName] = useState('');
-  const [newCharacterDesc, setNewCharacterDesc] = useState('');
-  const [newCharacterType, setNewCharacterType] = useState<'mortal' | 'immortal'>('mortal');
-  const [newResourceIsStationary, setNewResourceIsStationary] = useState(false);
-  const [newSkillIsAncient, setNewSkillIsAncient] = useState(false);
-  const [newMarkName, setNewMarkName] = useState('');
-  const [newMarkDesc, setNewMarkDesc] = useState('');
-
-  // Journal editing states
-  const [editingJournalId, setEditingJournalId] = useState<string | null>(null);
-  const [editingJournalText, setEditingJournalText] = useState<string>('');
-
-  // Experience editing states
-  const [editingExperienceId, setEditingExperienceId] = useState<string | null>(null);
-  const [editingExperienceText, setEditingExperienceText] = useState<string>('');
-
-  // Diary experience editing states
-  const [editingDiaryExpId, setEditingDiaryExpId] = useState<string | null>(null);
-  const [editingDiaryExpText, setEditingDiaryExpText] = useState<string>('');
-
-  // Inline editing states for lists
-  const [editingSkillId, setEditingSkillId] = useState<string | null>(null);
-  const [editingSkillName, setEditingSkillName] = useState<string>('');
-  const [editingSkillDesc, setEditingSkillDesc] = useState<string>('');
-  const [editingSkillIsAncient, setEditingSkillIsAncient] = useState<boolean>(false);
-  
-  const [editingResourceId, setEditingResourceId] = useState<string | null>(null);
-  const [editingResourceName, setEditingResourceName] = useState<string>('');
-  const [editingResourceDesc, setEditingResourceDesc] = useState<string>('');
-  const [editingResourceIsStationary, setEditingResourceIsStationary] = useState<boolean>(false);
-  
-  const [editingCharacterId, setEditingCharacterId] = useState<string | null>(null);
-  const [editingCharacterName, setEditingCharacterName] = useState<string>('');
-  const [editingCharacterDesc, setEditingCharacterDesc] = useState<string>('');
-  const [editingCharacterType, setEditingCharacterType] = useState<'mortal' | 'immortal'>('mortal');
-  
-  const [editingMarkId, setEditingMarkId] = useState<string | null>(null);
-  const [editingMarkName, setEditingMarkName] = useState<string>('');
-  const [editingMarkDesc, setEditingMarkDesc] = useState<string>('');
-
-  const [user, setUser] = useState<User | null>(null);
-  const isSyncInitializedRef = useRef(false);
-
-  // Firebase Auth Listener
+const draftKey = (state: GameState) => JSON.stringify([state.characterName, state.currentPromptId, state.promptVisitHistory[state.currentPromptId], state.activeAltIdx]);
+const titles: Record<Page, [string, string, string]> = {
+  play: ['THE UNFOLDING', '밤은 아직 끝나지 않았다', '사건에 답하고, 한 문장의 경험을 기억에 새기세요.'],
+  memories: ['WHAT REMAINS', '당신이 기억하는 것들', '다섯 기억, 저마다 세 개의 경험. 모든 것을 간직할 수는 없습니다.'],
+  skills: ['WHAT YOU HAVE BECOME', '몸에 밴 것들', '체크한 기술은 한 번 사용한 기술이자, 당신이 어떤 존재가 되었는지를 말합니다.'],
+  resources: ['THINGS YOU HOLD', '손에 남은 것들', '성채도 반지도 하나의 자원입니다. 잃어버린 것의 이름도 남겨 두세요.'],
+  characters: ['THOSE WHO PASS', '스쳐 가는 얼굴들', '누군가는 당신을 사랑하고, 누군가는 오래도록 당신을 기억합니다.'],
+  marks: ['THE VISIBLE CURSE', '숨길 수 없는 흔적', '불멸의 징표, 그리고 그것을 감추기 위해 당신이 하는 일.'],
+  diary: ['BORROWED MEMORY', '종이 위의 기억', '일기장 속 기억은 당신의 머릿속에 없습니다. 쓰인 것만이 진실입니다.'],
+  journal: ['THE CHRONICLE', '사라지지 않는 기록', '지나온 사건을 돌아보세요. 이야기보다 기억과 경험이 우선합니다.'],
+  rules: ['A COMPANION TO THE BOOK', '긴 밤을 위한 안내', '소장한 룰북 1.2판의 기본 규칙을 따라 진행합니다.']
+};
+const navigation = [['play', '이야기 이어가기', Feather], ['memories', '기억과 경험', Library], ['skills', '기술', Sword], ['resources', '자원', Gem], ['characters', '등장인물', Users], ['marks', '표식', Fingerprint], ['diary', '일기장', BookOpen], ['journal', '연대기', History]] as const;
+function Modal({
+  title,
+  children,
+  close,
+  footer
+}: {
+  title: string;
+  children: ReactNode;
+  close: () => void;
+  footer?: ReactNode;
+}) {
+  const element = useRef<HTMLDivElement>(null);
+  const onClose = useRef(close);
+  onClose.current = close;
   useEffect(() => {
-    if (!auth) return;
-    const unsubscribe = onAuthStateChanged(auth, (currentUser: any) => {
-      setUser(currentUser);
-      if (!currentUser) {
-        // When logged out, load local save to continue playing offline
-        const saved = localStorage.getItem(LOCAL_STORAGE_KEY);
-        if (saved) {
-          try {
-            setGameState(JSON.parse(saved));
-            if (!saved || !JSON.parse(saved).characterName) setActiveTab('setup'); else setActiveTab('memories');
-          } catch (e) {
-            console.error('Failed to load local save on logout', e);
-          }
-        } else {
-          setGameState(initialGameState);
-          setActiveTab('setup');
-        }
+    const previous = document.activeElement as HTMLElement | null;
+    const overflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    const items = () => Array.from(element.current?.querySelectorAll<HTMLElement>('button:not(:disabled),input:not(:disabled),textarea,select,a[href]') ?? []);
+    items()[0]?.focus();
+    const key = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') onClose.current();
+      const first = items()[0],
+        last = items().at(-1);
+      if (event.key === 'Tab' && event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last?.focus();
       }
-    });
-    return () => unsubscribe();
+      if (event.key === 'Tab' && !event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first?.focus();
+      }
+    };
+    document.addEventListener('keydown', key);
+    return () => {
+      document.removeEventListener('keydown', key);
+      document.body.style.overflow = overflow;
+      previous?.focus();
+    };
   }, []);
-
-  // Firebase Real-time Sync Listener
-  useEffect(() => {
-    if (!user || !db) {
-      isSyncInitializedRef.current = false;
-      return;
-    }
-    isSyncInitializedRef.current = false; // Reset on user change
-    
-    const docRef = doc(db as any, 'vampire_saves', user.uid);
-    const unsubscribe = onSnapshot(docRef, (docSnap: any) => {
-      if (docSnap.exists()) {
-        const data = docSnap.data();
-        if (data.gameState) {
-          try {
-            const localStr = localStorage.getItem(LOCAL_STORAGE_KEY);
-            if (localStr === data.gameState) {
-              isSyncInitializedRef.current = true;
-              return; // Already in sync, avoid triggering state update to prevent loops
-            }
-            const parsed = JSON.parse(data.gameState);
-
-            // Handle Sync Conflicts on login / initial load
-            if (!isSyncInitializedRef.current) {
-              isSyncInitializedRef.current = true;
-              
-              let localParsed: any = null;
-              if (localStr) {
-                try { localParsed = JSON.parse(localStr); } catch (e) {}
-              }
-
-              // Both local state and cloud state exist and differ
-              if (localParsed && localParsed.characterName && parsed && parsed.characterName) {
-                const selectCloud = window.confirm(
-                  "동기화 충돌 감지:\n\n" +
-                  "현재 브라우저(노트북)에 저장된 세이브와 클라우드(구글 계정)에 저장된 세이브가 서로 다릅니다.\n\n" +
-                  "[확인] 클라우드 세이브 불러오기\n" +
-                  "(주의: 현재 기기의 진행 상황 '" + localParsed.characterName + "'은(는) 소실되고 클라우드의 '" + parsed.characterName + "' 데이터로 대체됩니다)\n\n" +
-                  "[취소] 현재 기기의 세이브를 클라우드에 덮어쓰기\n" +
-                  "(주의: 클라우드에 저장된 '" + parsed.characterName + "' 데이터가 지워지고 현재 기기의 '" + localParsed.characterName + "' 데이터가 저장됩니다)"
-                );
-
-                if (selectCloud) {
-                  setGameState(parsed);
-                  localStorage.setItem(LOCAL_STORAGE_KEY, data.gameState);
-                } else {
-                  // Upload local state to cloud immediately to resolve
-                  setDoc(docRef, { gameState: localStr }, { merge: true })
-                    .catch((err: any) => console.error("Initial overwrite cloud save failed:", err));
-                }
-                return;
-              }
-            }
-
-            setGameState(parsed);
-            if (!parsed.characterName) setActiveTab('setup'); else setActiveTab('memories');
-            isSyncInitializedRef.current = true;
-          } catch (e) {
-            console.error("Failed to parse synced state", e);
-          }
-        }
-      } else {
-        // If no cloud save exists, seed from localStorage immediately
-        const localStr = localStorage.getItem(LOCAL_STORAGE_KEY);
-        if (localStr) {
-          try {
-            const parsed = JSON.parse(localStr);
-            if (parsed.characterName) {
-              setDoc(docRef, { gameState: localStr }, { merge: true })
-                .catch((err: any) => console.error("Initial cloud save failed:", err));
-            }
-          } catch (e) {
-            console.error("Failed to parse localStr during seeding", e);
-          }
-        }
-        isSyncInitializedRef.current = true;
-      }
-    }, (error: any) => {
-      console.error("Firebase sync error:", error);
-      if (error.code === 'permission-denied') {
-        alert(
-          "동기화 오류: Firestore 데이터베이스 접근 권한이 거부되었습니다.\n\n" +
-          "해결 방법:\n" +
-          "1. Firebase 콘솔(console.firebase.google.com) ➡️ Cloud Firestore ➡️ [Rules(규칙)] 탭으로 이동합니다.\n" +
-          "2. rules에 'match /vampire_saves/{userId}' 경로 규칙을 추가해야 합니다.\n\n" +
-          "예시 구문:\n" +
-          "match /vampire_saves/{userId} {\n  allow read, write: if true;\n}\n\n" +
-          "3. 규칙을 수정하고 [게시] 버튼을 클릭해 주십시오."
-        );
-      } else {
-        alert("동기화 중 오류가 발생했습니다: " + (error.message || "알 수 없는 오류"));
-      }
-    });
-    return () => unsubscribe();
-  }, [user]);
-
-  // Load save from LocalStorage (initial load on boot, only if no user is signed in yet)
-  useEffect(() => {
-    if (!user) {
-      const saved = localStorage.getItem(LOCAL_STORAGE_KEY);
-      if (saved) {
-        try {
-          const parsed = JSON.parse(saved);
-          setGameState(parsed);
-          if (!parsed.characterName) setActiveTab('setup'); else setActiveTab('memories');
-        } catch (e) {
-          console.error('Failed to load save', e);
-        }
-      }
-    }
-  }, [user]);
-
-  // Save state to LocalStorage on any change
-  useEffect(() => {
-    if (activeTab !== 'setup') {
-      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(gameState));
-    }
-  }, [gameState]);
-
-  // Save state to Firebase on any change (debounced 1s)
-  useEffect(() => {
-    if (user && db && gameState.characterName) {
-      const timer = setTimeout(() => {
-        const docRef = doc(db as any, 'vampire_saves', user.uid);
-        setDoc(docRef, { gameState: JSON.stringify(gameState) }, { merge: true })
-          .catch((err: any) => console.error("Firebase save failed:", err));
-      }, 1000); // 1-second debounce
-      return () => clearTimeout(timer);
-    }
-  }, [gameState, user]);
-
-
-  // Get active prompt text based on prompt ID and visit count
-  const activePrompt = gamePrompts.find(p => p.id === gameState.currentPromptId) || gamePrompts[0];
-  const currentVisitCount = gameState.promptVisitHistory[gameState.currentPromptId] || 1;
-  
-  // Alternate Prompt Support (Appendix)
-  const isAltActive = !!gameState.isAltActive;
-  const activeAltPrompt = gameState.activeAltIdx !== null && gameState.activeAltIdx !== undefined
-    ? alternatePrompts[gameState.activeAltIdx] 
-    : null;
-
-  const activePromptText = isAltActive && activeAltPrompt
-    ? `[부록 대체사건] ${activeAltPrompt.text}`
-    : activePrompt.entries[Math.min(currentVisitCount - 1, activePrompt.entries.length - 1)];
-
-  // Handle Drawing an Alternate Prompt
-  const handleSubstitutePrompt = () => {
-    const randomIdx = Math.floor(Math.random() * alternatePrompts.length);
-    setGameState(prev => ({
-      ...prev,
-      isAltActive: true,
-      activeAltIdx: randomIdx
-    }));
-  };
-
-  const handleRevertPrompt = () => {
-    setGameState(prev => ({
-      ...prev,
-      isAltActive: false,
-      activeAltIdx: null
-    }));
-  };
-
-  // Reset and start fresh
-  const handleResetGame = () => {
-    if (window.confirm('정말 모든 기록을 초기화하고 처음부터 다시 시작하시겠습니까? (일기장과 모든 세이브가 삭제됩니다)')) {
-      if (user && db) {
-        const docRef = doc(db as any, 'vampire_saves', user.uid);
-        setDoc(docRef, { gameState: JSON.stringify(initialGameState) }, { merge: true })
-          .catch((err: any) => console.error("Firebase reset failed:", err));
-      }
-      localStorage.removeItem(LOCAL_STORAGE_KEY);
-      setGameState(initialGameState);
-      setActiveTab('setup');
-      setCurrentJournalText('');
-      setD10Val(null);
-      setD6Val(null);
-    }
-  };
-
-  const handleLogin = async () => {
-    try {
-      if (auth && googleProvider) {
-        await signInWithPopup(auth, googleProvider);
-      }
-    } catch (error: any) {
-      console.error("Login failed:", error);
-      if (error.code === 'auth/unauthorized-domain') {
-        alert(
-          "로그인 실패: 이 도메인(" + window.location.hostname + ")은 Firebase Authentication의 승인된 도메인(Authorized Domains) 목록에 등록되어 있지 않습니다.\n\n" +
-          "해결 방법:\n" +
-          "1. Firebase 콘솔(console.firebase.google.com)에 로그인하고 해당 프로젝트(skogsduvasbookshop)로 들어갑니다.\n" +
-          "2. 왼쪽 메뉴에서 [Authentication] -> [Settings] 탭 -> [Authorized domains]로 이동합니다.\n" +
-          "3. [도메인 추가]를 클릭하여 '" + window.location.hostname + "' 도메인을 추가해주십시오."
-        );
-      } else if (error.code === 'auth/operation-not-allowed') {
-        alert(
-          "로그인 실패: Google 로그인 제공업체(Sign-in provider)가 Firebase 콘솔에서 활성화되어 있지 않습니다.\n\n" +
-          "해결 방법:\n" +
-          "1. Firebase 콘솔 -> [Authentication] -> [Sign-in method]로 이동합니다.\n" +
-          "2. [Google] 로그인 옵션을 활성화해주십시오."
-        );
-      } else {
-        alert("로그인 실패: " + (error.message || "알 수 없는 오류"));
-      }
-    }
-  };
-
-  const handleLogout = async () => {
-    if (window.confirm("정말로 로그아웃 하시겠습니까? 현재 기기의 세이브는 유지되나 새로운 클라우드 저장은 중단됩니다.")) {
-      try {
-        if (auth) {
-          await signOut(auth);
-        }
-      } catch (error) {
-        console.error("Logout failed:", error);
-      }
-    }
-  };
-
-
-  // Start game from setup
-  const handleStartGame = (e?: React.FormEvent) => {
-    if (e) e.preventDefault();
-    if (!gameState.characterName.trim()) {
-      alert('흡혈귀의 이름을 먼저 기입해 주십시오.');
-      return;
-    }
-    // Pre-populate starting sheet placeholders so user can edit them directly
-    const startingSkills: Skill[] = [
-      { id: 's1', name: '고대 언어', isChecked: false },
-      { id: 's2', name: '도검술', isChecked: false },
-      { id: 's3', name: '설득', isChecked: false }
-    ];
-    const startingResources: Resource[] = [
-      { id: 'r1', name: '소유물: 은색 인장 반지', isStationary: false },
-      { id: 'r2', name: '정착지: 무너진 수도원', isStationary: true },
-      { id: 'r3', name: '동물 동반자', isStationary: false }
-    ];
-    const startingCharacters: Character[] = [
-      { id: 'c1', name: '가족/친구 (필멸자)', type: 'mortal', isAlive: true },
-      { id: 'c2', name: '연인/지인 (필멸자)', type: 'mortal', isAlive: true },
-      { id: 'c3', name: '지역 유력자 (필멸자)', type: 'mortal', isAlive: true },
-      { id: 'c4', name: '당신을 창조한 흡혈귀 (불멸자)', type: 'immortal', isAlive: true }
-    ];
-    
-    // 5 Initial Memories, each with one base experience from origin
-    const startingMemories: Memory[] = [
-      { id: 'm1', experiences: [{ id: 'e1', text: `${gameState.characterName}로서의 시작: ${gameState.vampireOrigin || '어둠 속에서 깨어났다'}` }] },
-      { id: 'm2', experiences: [] },
-      { id: 'm3', experiences: [] },
-      { id: 'm4', experiences: [] },
-      { id: 'm5', experiences: [] }
-    ];
-
-    setGameState(prev => ({
-      ...prev,
-      skills: prev.skills.length > 0 ? prev.skills : startingSkills,
-      resources: prev.resources.length > 0 ? prev.resources : startingResources,
-      characters: prev.characters.length > 0 ? prev.characters : startingCharacters,
-      memories: prev.memories[0].experiences.length > 0 ? prev.memories : startingMemories
-    }));
-    setCurrentJournalText('');
-    setActiveTab('memories');
-  };
-
-  // Roll Dice Logic (1d10 - 1d6)
-  const handleRollDice = () => {
-    if (isRolling) return;
-    setIsRolling(true);
-    
-    let rolls = 0;
-    const interval = setInterval(() => {
-      setD10Val(Math.floor(Math.random() * 10) + 1);
-      setD6Val(Math.floor(Math.random() * 6) + 1);
-      rolls++;
-      if (rolls > 8) {
-        clearInterval(interval);
-        finalizeRoll();
-      }
-    }, 60);
-  };
-
-  const finalizeRoll = () => {
-    const d10 = Math.floor(Math.random() * 10) + 1;
-    const d6 = Math.floor(Math.random() * 6) + 1;
-    setD10Val(d10);
-    setD6Val(d6);
-    setIsRolling(false);
-
-    const offset = d10 - d6;
-    let newPromptId = gameState.currentPromptId + offset;
-    
-    // Constraints
-    if (newPromptId < 1) newPromptId = 1;
-    if (newPromptId > 80) newPromptId = 80;
-
-    // Automatically handle prompt visits increment
-    const updatedVisits = { ...gameState.promptVisitHistory };
-    updatedVisits[newPromptId] = (updatedVisits[newPromptId] || 0) + 1;
-
-    // Check if this constitutes a Game Over (Prompts 72-80 contain Game Over, or if explicitly reached)
-    const willBeGameOver = newPromptId >= 72;
-    let gameOverMsg = '';
-    if (willBeGameOver) {
-      const endPrompt = gamePrompts.find(p => p.id === newPromptId);
-      gameOverMsg = endPrompt?.entries[0] || '당신의 천 년 여정이 막을 내렸습니다.';
-    }
-
-    // Pre-save current text as an entry before moving
-    const textToSave = currentJournalText.trim() || "(기록 없음)";
-    
-    const journalItem: JournalEntry = {
-      id: `j-${Date.now()}`,
-      promptId: gameState.currentPromptId,
-      visitCount: gameState.promptVisitHistory[gameState.currentPromptId] || 1,
-      rollText: `1d10(${d10}) - 1d6(${d6}) = ${offset >= 0 ? '+' + offset : offset}`,
-      dateString: new Date().toLocaleTimeString('ko-KR', {hour: '2-digit', minute:'2-digit'}),
-      textContent: textToSave,
-      timestamp: Date.now()
-    };
-
-    setGameState(prev => ({
-      ...prev,
-      currentPromptId: newPromptId,
-      promptVisitHistory: updatedVisits,
-      journal: [journalItem, ...prev.journal],
-      isGameOver: prev.isGameOver || willBeGameOver,
-      gameOverText: prev.isGameOver ? prev.gameOverText : (willBeGameOver ? gameOverMsg : ''),
-      isAltActive: false,
-      activeAltIdx: null
-    }));
-
-    setCurrentJournalText('');
-  };
-
-  // Manual navigation
-  const handleManualMove = (direction: 'prev' | 'next') => {
-    let targetId = gameState.currentPromptId + (direction === 'next' ? 1 : -1);
-    if (targetId < 1) targetId = 1;
-    if (targetId > 80) targetId = 80;
-
-    const updatedVisits = { ...gameState.promptVisitHistory };
-    updatedVisits[targetId] = (updatedVisits[targetId] || 0) + 1;
-
-    setGameState(prev => ({
-      ...prev,
-      currentPromptId: targetId,
-      promptVisitHistory: updatedVisits,
-      isAltActive: false,
-      activeAltIdx: null
-    }));
-
-    setCurrentJournalText('');
-  };
-
-  // --- Game Sheet Management Utilities ---
-
-  // 1. Memories & Experiences
-  const handleAddExperience = (memoryId: string) => {
-    const text = newExperienceInputs[memoryId]?.trim();
-    if (!text) return;
-
-    setGameState(prev => {
-      const updatedMemories = prev.memories.map(m => {
-        if (m.id === memoryId) {
-          if (m.experiences.length >= 3) {
-            alert('기억 슬롯 하나는 최대 3개의 경험만 담을 수 있습니다. 경험을 추가하려면 다른 기억 공간을 사용하거나, 이 기억 슬롯 전체를 일기장으로 옮겨 비우십시오.');
-            return m;
-          }
-          return {
-            ...m,
-            experiences: [...m.experiences, { id: `e-${Date.now()}`, text }]
-          };
-        }
-        return m;
-      });
-
-      return { ...prev, memories: updatedMemories };
-    });
-
-    setNewExperienceInputs(prev => ({ ...prev, [memoryId]: '' }));
-  };
-
-  const handleDeleteExperience = (memoryId: string, expId: string) => {
-    if (!window.confirm('이 경험을 정말 잊으시겠습니까? 영원히 지워집니다.')) return;
-    setGameState(prev => ({
-      ...prev,
-      memories: prev.memories.map(m => {
-        if (m.id === memoryId) {
-          return { ...m, experiences: m.experiences.filter(e => e.id !== expId) };
-        }
-        return m;
-      })
-    }));
-  };
-
-  const handleStartEditExperience = (expId: string, text: string) => {
-    setEditingExperienceId(expId);
-    setEditingExperienceText(text);
-  };
-
-  const handleCancelEditExperience = () => {
-    setEditingExperienceId(null);
-    setEditingExperienceText('');
-  };
-
-  const handleSaveEditExperience = (memoryId: string, expId: string) => {
-    if (!editingExperienceText.trim()) {
-      alert('경험 내용을 입력해주세요.');
-      return;
-    }
-    setGameState(prev => ({
-      ...prev,
-      memories: prev.memories.map(m => {
-        if (m.id === memoryId) {
-          return {
-            ...m,
-            experiences: m.experiences.map(e =>
-              e.id === expId ? { ...e, text: editingExperienceText.trim() } : e
-            )
-          };
-        }
-        return m;
-      })
-    }));
-    setEditingExperienceId(null);
-    setEditingExperienceText('');
-  };
-
-  // Offload entire Memory to Diary
-  const handleMoveToDiary = (memoryId: string) => {
-    const memory = gameState.memories.find(m => m.id === memoryId);
-    if (!memory || memory.experiences.length === 0) {
-      alert('비어 있는 기억은 일기장으로 옮길 수 없습니다.');
-      return;
-    }
-
-    if (!window.confirm('이 기억 슬롯의 모든 경험들을 일기장(Diary)으로 안전하게 보관하시겠습니까? 옮긴 후 기억 칸은 깨끗하게 비어 새로운 경험을 저장할 수 있게 됩니다.')) return;
-
-    const diaryEntry: DiaryEntry = {
-      id: `d-${Date.now()}`,
-      originalMemoryId: memory.id,
-      experiences: [...memory.experiences],
-      timestamp: Date.now()
-    };
-
-    setGameState(prev => ({
-      ...prev,
-      diary: [diaryEntry, ...prev.diary],
-      memories: prev.memories.map(m => m.id === memoryId ? { ...m, experiences: [] } : m)
-    }));
-    setActiveTab('diary');
-  };
-
-  // Diary experience editing functions
-  const handleStartEditDiaryExp = (id: string, text: string) => {
-    setEditingDiaryExpId(id);
-    setEditingDiaryExpText(text);
-  };
-  const handleCancelEditDiaryExp = () => {
-    setEditingDiaryExpId(null);
-    setEditingDiaryExpText('');
-  };
-  const handleSaveEditDiaryExp = (entryId: string, expId: string) => {
-    if (!editingDiaryExpText.trim()) return;
-    setGameState(prev => ({
-      ...prev,
-      diary: prev.diary.map(entry => {
-        if (entry.id === entryId) {
-          return {
-            ...entry,
-            experiences: entry.experiences.map(e => e.id === expId ? { ...e, text: editingDiaryExpText.trim() } : e)
-          };
-        }
-        return entry;
-      })
-    }));
-    setEditingDiaryExpId(null);
-    setEditingDiaryExpText('');
-  };
-  const handleDeleteDiaryExp = (entryId: string, expId: string) => {
-    if (!window.confirm('이 일기장 경험을 정말 삭제하시겠습니까?')) return;
-    setGameState(prev => {
-      const updatedDiary = prev.diary.map(entry => {
-        if (entry.id === entryId) {
-          return {
-            ...entry,
-            experiences: entry.experiences.filter(e => e.id !== expId)
-          };
-        }
-        return entry;
-      }).filter(entry => entry.experiences.length > 0);
-      return {
-        ...prev,
-        diary: updatedDiary
-      };
-    });
-  };
-
-  // 2. Skills
-  const handleAddSkill = () => {
-    if (!newSkillName.trim()) return;
-    const fullName = newSkillDesc.trim()
-      ? `${newSkillName.trim()}: ${newSkillDesc.trim()}`
-      : newSkillName.trim();
-    setGameState(prev => ({
-      ...prev,
-      skills: [...prev.skills, { id: `s-${Date.now()}`, name: fullName, isChecked: false, isAncient: newSkillIsAncient }]
-    }));
-    setNewSkillName('');
-    setNewSkillDesc('');
-    setNewSkillIsAncient(false);
-  };
-
-  const handleToggleSkill = (id: string) => {
-    setGameState(prev => ({
-      ...prev,
-      skills: prev.skills.map(s => s.id === id ? { ...s, isChecked: !s.isChecked } : s)
-    }));
-  };
-
-  const handleDeleteSkill = (id: string) => {
-    setGameState(prev => ({
-      ...prev,
-      skills: prev.skills.filter(s => s.id !== id)
-    }));
-  };
-
-  // 3. Resources
-  const handleAddResource = () => {
-    if (!newResourceName.trim()) return;
-    const fullName = newResourceDesc.trim()
-      ? `${newResourceName.trim()}: ${newResourceDesc.trim()}`
-      : newResourceName.trim();
-    setGameState(prev => ({
-      ...prev,
-      resources: [...prev.resources, { id: `r-${Date.now()}`, name: fullName, isStationary: newResourceIsStationary }]
-    }));
-    setNewResourceName('');
-    setNewResourceDesc('');
-    setNewResourceIsStationary(false);
-  };
-
-  const handleToggleResourceLost = (id: string) => {
-    setGameState(prev => ({
-      ...prev,
-      resources: prev.resources.map(r => r.id === id ? { ...r, isLost: !r.isLost } : r)
-    }));
-  };
-
-  const handleDeleteResource = (id: string) => {
-    setGameState(prev => ({
-      ...prev,
-      resources: prev.resources.filter(r => r.id !== id)
-    }));
-  };
-
-  // 4. Characters
-  const handleAddCharacter = () => {
-    if (!newCharacterName.trim()) return;
-    const fullName = newCharacterDesc.trim()
-      ? `${newCharacterName.trim()}: ${newCharacterDesc.trim()}`
-      : newCharacterName.trim();
-    setGameState(prev => ({
-      ...prev,
-      characters: [...prev.characters, { 
-        id: `c-${Date.now()}`, 
-        name: fullName, 
-        type: newCharacterType, 
-        isAlive: true 
-      }]
-    }));
-    setNewCharacterName('');
-    setNewCharacterDesc('');
-  };
-
-  const handleToggleCharacterDeath = (id: string) => {
-    setGameState(prev => ({
-      ...prev,
-      characters: prev.characters.map(c => c.id === id ? { ...c, isAlive: !c.isAlive } : c)
-    }));
-  };
-
-  const handleKillCharacter = (id: string) => {
-    setGameState(prev => ({
-      ...prev,
-      characters: prev.characters.map(char => char.id === id ? { ...char, isAlive: false } : char)
-    }));
-  };
-
-  const handleDeleteCharacter = (id: string) => {
-    setGameState(prev => ({
-      ...prev,
-      characters: prev.characters.filter(c => c.id !== id)
-    }));
-  };
-
-  // 5. Marks
-  const handleAddMark = () => {
-    if (!newMarkName.trim()) return;
-    const fullName = newMarkDesc.trim()
-      ? `${newMarkName.trim()}: ${newMarkDesc.trim()}`
-      : newMarkName.trim();
-    setGameState(prev => ({
-      ...prev,
-      marks: [...prev.marks, { id: `m-${Date.now()}`, description: fullName }]
-    }));
-    setNewMarkName('');
-    setNewMarkDesc('');
-  };
-
-  const handleDeleteMark = (id: string) => {
-    setGameState(prev => ({
-      ...prev,
-      marks: prev.marks.filter(m => m.id !== id)
-    }));
-  };
-
-  // Inline editing handlers for lists
-  const handleStartEditSkill = (id: string, name: string) => {
-    const parsed = parseTextWithDescription(name);
-    const skill = gameState.skills.find(s => s.id === id);
-    setEditingSkillId(id);
-    setEditingSkillName(parsed.title);
-    setEditingSkillDesc(parsed.desc);
-    setEditingSkillIsAncient(skill ? !!skill.isAncient : false);
-  };
-  const handleSaveEditSkill = (id: string) => {
-    if (!editingSkillName.trim()) return;
-    const fullName = editingSkillDesc.trim()
-      ? `${editingSkillName.trim()}: ${editingSkillDesc.trim()}`
-      : editingSkillName.trim();
-    setGameState(prev => ({
-      ...prev,
-      skills: prev.skills.map(s => s.id === id ? { ...s, name: fullName, isAncient: editingSkillIsAncient } : s)
-    }));
-    setEditingSkillId(null);
-  };
-
-  const handleStartEditResource = (id: string, name: string) => {
-    const parsed = parseTextWithDescription(name);
-    const res = gameState.resources.find(r => r.id === id);
-    setEditingResourceId(id);
-    setEditingResourceName(parsed.title);
-    setEditingResourceDesc(parsed.desc);
-    setEditingResourceIsStationary(res ? !!res.isStationary : false);
-  };
-  const handleSaveEditResource = (id: string) => {
-    if (!editingResourceName.trim()) return;
-    const fullName = editingResourceDesc.trim()
-      ? `${editingResourceName.trim()}: ${editingResourceDesc.trim()}`
-      : editingResourceName.trim();
-    setGameState(prev => ({
-      ...prev,
-      resources: prev.resources.map(r => r.id === id ? { ...r, name: fullName, isStationary: editingResourceIsStationary } : r)
-    }));
-    setEditingResourceId(null);
-  };
-
-  const handleStartEditCharacter = (id: string, name: string) => {
-    const parsed = parseTextWithDescription(name);
-    const char = gameState.characters.find(c => c.id === id);
-    setEditingCharacterId(id);
-    setEditingCharacterName(parsed.title);
-    setEditingCharacterDesc(parsed.desc);
-    setEditingCharacterType(char ? char.type : 'mortal');
-  };
-  const handleSaveEditCharacter = (id: string) => {
-    if (!editingCharacterName.trim()) return;
-    const fullName = editingCharacterDesc.trim()
-      ? `${editingCharacterName.trim()}: ${editingCharacterDesc.trim()}`
-      : editingCharacterName.trim();
-    setGameState(prev => ({
-      ...prev,
-      characters: prev.characters.map(c => c.id === id ? { ...c, name: fullName, type: editingCharacterType } : c)
-    }));
-    setEditingCharacterId(null);
-  };
-
-  const handleStartEditMark = (id: string, desc: string) => {
-    const parsed = parseTextWithDescription(desc);
-    setEditingMarkId(id);
-    setEditingMarkName(parsed.title);
-    setEditingMarkDesc(parsed.desc);
-  };
-  const handleSaveEditMark = (id: string) => {
-    if (!editingMarkName.trim()) return;
-    const fullName = editingMarkDesc.trim()
-      ? `${editingMarkName.trim()}: ${editingMarkDesc.trim()}`
-      : editingMarkName.trim();
-    setGameState(prev => ({
-      ...prev,
-      marks: prev.marks.map(m => m.id === id ? { ...m, description: fullName } : m)
-    }));
-    setEditingMarkId(null);
-  };
-
-  // 6. Journal Entries
-  const handleStartEditJournal = (id: string, text: string) => {
-    setEditingJournalId(id);
-    setEditingJournalText(text);
-  };
-
-  const handleCancelEditJournal = () => {
-    setEditingJournalId(null);
-    setEditingJournalText('');
-  };
-
-  const handleSaveEditJournal = (id: string) => {
-    if (!editingJournalText.trim()) {
-      alert('일지 내용을 입력해주세요.');
-      return;
-    }
-    setGameState(prev => ({
-      ...prev,
-      journal: prev.journal.map(item =>
-        item.id === id ? { ...item, textContent: editingJournalText.trim() } : item
-      )
-    }));
-    setEditingJournalId(null);
-    setEditingJournalText('');
-  };
-
-  const handleDeleteJournalEntry = (id: string) => {
-    if (window.confirm('이 일지 기록을 영원히 삭제하시겠습니까?')) {
-      setGameState(prev => ({
-        ...prev,
-        journal: prev.journal.filter(item => item.id !== id)
-      }));
-    }
-  };
-
-
-
-  // --- Game Over Overlay Screen ---
-  if (gameState.isGameOver) {
-    return (
-      <div className="app-container game-over-container" style={{maxWidth: '800px', marginTop:'4rem'}}>
-        <div className="parchment-card" style={{borderColor: 'var(--crimson-primary)'}}>
-          <div className="vampire-seal">🩸</div>
-          <h1 className="game-over-title gothic-font">연대기의 끝</h1>
-          <div className="ornate-divider"><span className="english-gothic" style={{fontSize: '1.4rem', letterSpacing: '0.1em'}}>FINIS</span></div>
-          
-          <p className="prompt-body" style={{fontSize: '1.3rem', textAlign:'center', marginBottom: '2rem'}}>
-            "{gameState.gameOverText}"
-          </p>
-
-          <p style={{fontSize: '1.1rem', color: 'var(--text-light)', marginBottom: '2rem'}}>
-            흡혈귀 <strong>{gameState.characterName}</strong>의 이야기는 프롬프트 {gameState.currentPromptId}번에서 영원히 멈추었습니다. 
-            당신은 수백 년간 피와 어둠의 길을 걸으며 역사의 한 장을 장식했습니다.
-          </p>
-
-          <div style={{display:'flex', gap:'1rem', justifyContent:'center'}}>
-            <button className="btn-medieval" onClick={handleResetGame}>
-              새 연대기 시작
-            </button>
-            <button className="btn-gold-outline" onClick={() => setGameState({...gameState, isGameOver: false})}>
-              저널 복구해서 보기
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // --- Main Global Layout ---
-  return (
-    <div className="app-container">
-      {/* GLOBAL HEADER */}
-      <header className="app-header" style={{flexDirection: 'row', justifyContent: 'space-between', width:'100%', paddingBottom:'0.5rem', borderBottom: 'none'}}>
-        <div style={{textAlign: 'left'}}>
-          <h2 style={{fontSize: '1.5rem', color:'var(--crimson-primary)'}} className="gothic-font">천년령 흡혈귀</h2>
-          <span className="english-gothic" style={{fontSize:'1.2rem', color: 'var(--gold-dark)', marginTop: '0.2rem', fontWeight: 400}}>
-            Thousand Year Old Vampire
-          </span>
-        </div>
-        
-        <div className="action-btn-group" style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
-          {user ? (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-              <div style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '0.4rem',
-                backgroundColor: 'rgba(39, 174, 96, 0.1)',
-                border: '1px solid rgba(39, 174, 96, 0.3)',
-                padding: '0.35rem 0.6rem',
-                borderRadius: '3px',
-                fontSize: '0.85rem',
-                color: '#27ae60',
-                fontWeight: 'bold'
-              }}>
-                <span style={{width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#27ae60', boxShadow: '0 0 6px #27ae60'}}></span>
-                <span>클라우드 동기화 중 ({user.displayName})</span>
-              </div>
-              <button className="btn-gold-outline" style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', padding: '0.35rem 0.7rem', fontSize: '0.85rem' }} onClick={handleLogout}>
-                로그아웃
-              </button>
-            </div>
-          ) : (
-            <button className="btn-medieval" style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', padding: '0.4rem 0.8rem', fontSize: '0.85rem', backgroundColor: '#fff', color: '#2b2519', border: '1.5px solid var(--gold-accent)', fontWeight: 'bold' }} onClick={handleLogin}>
-              <GoogleIcon /> Google 로그인 연동
-            </button>
-          )}
-          <button className="btn-gold-outline" style={{display:'flex', alignItems:'center', gap:'0.3rem', padding: '0.35rem 0.7rem', fontSize: '0.85rem'}} onClick={handleResetGame}>
-            <IconReset /> 초기화
-          </button>
-        </div>
-      </header>
-
-      {/* GLOBAL TOP NAVIGATION TABS */}
-      <nav className="global-tabs-list" style={{ 
-        display: 'flex', gap: '0.2rem', flexWrap: 'wrap', 
-        marginBottom: '1.5rem', 
-        borderBottom: '2px solid rgba(197, 160, 89, 0.5)', 
-        paddingBottom: '0.5rem',
-        width: '100%'
-      }}>
-        <button className={`tab-btn ${activeTab === 'setup' ? 'active' : ''}`} style={{fontSize: '1rem', padding: '0.6rem 1.2rem'}} onClick={() => setActiveTab('setup')}>기본 정보 (시작)</button>
-        <button className={`tab-btn ${activeTab === 'memories' ? 'active' : ''}`} style={{fontSize: '1rem', padding: '0.6rem 1.2rem'}} onClick={() => setActiveTab('memories')}>기억 & 경험</button>
-        <button className={`tab-btn ${activeTab === 'skills' ? 'active' : ''}`} style={{fontSize: '1rem', padding: '0.6rem 1.2rem'}} onClick={() => setActiveTab('skills')}>기술</button>
-        <button className={`tab-btn ${activeTab === 'resources' ? 'active' : ''}`} style={{fontSize: '1rem', padding: '0.6rem 1.2rem'}} onClick={() => setActiveTab('resources')}>자원</button>
-        <button className={`tab-btn ${activeTab === 'characters' ? 'active' : ''}`} style={{fontSize: '1rem', padding: '0.6rem 1.2rem'}} onClick={() => setActiveTab('characters')}>등장인물</button>
-        <button className={`tab-btn ${activeTab === 'marks' ? 'active' : ''}`} style={{fontSize: '1rem', padding: '0.6rem 1.2rem'}} onClick={() => setActiveTab('marks')}>표식</button>
-        <button className={`tab-btn ${activeTab === 'diary' ? 'active' : ''}`} style={{fontSize: '1rem', padding: '0.6rem 1.2rem'}} onClick={() => setActiveTab('diary')}>일기장 ({gameState.diary.length})</button>
-        <button className={`tab-btn ${activeTab === 'manual' ? 'active' : ''}`} style={{fontSize: '1rem', padding: '0.6rem 1.2rem'}} onClick={() => setActiveTab('manual')}>설명서</button>
-      </nav>
-
-      {/* MAIN CONTENT AREA */}
-      <main className="main-content" style={{ width: '100%' }}>
-        
-        {/* 1. SETUP TAB (기본 정보) */}
-        {activeTab === 'setup' && (
-          <section className="parchment-card" style={{ maxWidth: '800px', margin: '0 auto' }}>
-            <h3 className="section-title gothic-font"><IconBook /> 기본 정보 및 연대기 시작</h3>
-            <div style={{marginBottom: '1.5rem', padding: '1rem', backgroundColor: 'rgba(143,117,54,0.1)', border: '1px solid var(--gold-dark)', borderRadius: '4px'}}>
-              <p style={{fontSize: '0.95rem', color: 'var(--text-color)', lineHeight: '1.6', whiteSpace: 'pre-line'}}>
-                <strong>[ 천년령 흡혈귀 - 초기 설정 ]</strong>
-                당신은 필멸의 삶을 등지고 영겁의 어둠 속으로 들어선 존재입니다. 피의 저주를 짊어지기 전, 당신이 누구였으며 어떤 상태로 흡혈귀가 되었는지 그 기원을 기록하십시오.
-              </p>
-            </div>
-            
-            <div className="setup-group">
-              <label>흡혈귀의 이름</label>
-              <input 
-                type="text" 
-                className="input-medieval" 
-                placeholder="예: 로데릭 반 카르슈타인, 발렌티나..."
-                value={gameState.characterName}
-                onChange={e => setGameState({...gameState, characterName: e.target.value})}
-              />
-            </div>
-            <div className="setup-group">
-              <label>기원 (어떻게 흡혈귀가 되었는가?)</label>
-              <textarea 
-                className="input-medieval" 
-                style={{minHeight: '100px', resize:'vertical'}}
-                placeholder="예: 흑사병이 돌던 해, 뒷골목에서 만난 의문의 귀족에 물려 밤을 헤매게 되었다..."
-                value={gameState.vampireOrigin}
-                onChange={e => setGameState({...gameState, vampireOrigin: e.target.value})}
-              />
-            </div>
-            <div style={{textAlign: 'center', marginTop: '2rem'}}>
-              <button type="button" className="btn-medieval" onClick={handleStartGame} style={{fontSize: '1.1rem', padding: '0.8rem 2rem', backgroundColor: 'var(--crimson-primary)', color: '#fff'}}>
-                연대기 시작하기 ➔
-              </button>
-              <p style={{marginTop: '0.5rem', fontSize: '0.85rem', color: 'var(--text-light)'}}>
-                (이름과 기원을 확정하고, 본격적으로 주사위를 굴려 기억을 기록합니다. 기술, 자원 등은 다른 탭에서 자유롭게 추가하실 수 있습니다.)
-              </p>
-            </div>
-          </section>
-        )}
-
-        {/* 2. MEMORIES TAB (Split Layout) */}
-        {activeTab === 'memories' && (
-          <div className="main-grid">
-            {/* LEFT PANEL: Prompts */}
-            <section className="parchment-card prompt-container">
-              <h3 className="section-title gothic-font">
-                <IconScroll /> 시간의 흐름
-              </h3>
-
-              <div className="prompt-display" style={{
-                position: 'relative',
-                borderColor: isAltActive ? 'var(--gold-dark)' : 'rgba(140,21,21,0.2)',
-                boxShadow: isAltActive ? '0 0 15px rgba(143,117,54,0.15)' : 'none'
-              }}>
-                <div className="prompt-header" style={{flexWrap:'wrap', gap:'0.5rem'}}>
-                  <div style={{display:'flex', alignItems:'center', gap:'0.5rem'}}>
-                    {isAltActive ? (
-                      <span className="prompt-badge" style={{background:'var(--gold-dark)', border:'1px solid #fff'}}>
-                        ✨ 부록 대체 프롬프트: {activeAltPrompt?.category}
-                      </span>
-                    ) : (
-                      <span className="prompt-badge">프롬프트 #{activePrompt.id} (P.{activePrompt.page})</span>
-                    )}
-                    {!isAltActive && (
-                      <span style={{fontSize: '0.8rem', fontWeight:'bold', color: 'var(--gold-dark)'}}>
-                        방문 횟수: {currentVisitCount}회째
-                      </span>
-                    )}
-                  </div>
-                  
-                  <div style={{display:'flex', gap:'0.4rem'}}>
-                    {isAltActive ? (
-                      <>
-                        <button className="btn-gold-outline" style={{padding:'0.1rem 0.4rem', fontSize:'0.75rem'}} onClick={handleSubstitutePrompt}>
-                          다른 부록 뽑기
-                        </button>
-                        <button className="btn-gold-outline" style={{padding:'0.1rem 0.4rem', fontSize:'0.75rem', borderColor:'var(--crimson-primary)', color:'var(--crimson-primary)'}} onClick={handleRevertPrompt}>
-                          기본으로 복구
-                        </button>
-                      </>
-                    ) : (
-                      <button className="btn-gold-outline" style={{padding:'0.1rem 0.4rem', fontSize:'0.75rem', background:'rgba(143,117,54,0.1)'}} onClick={handleSubstitutePrompt} title="오리지널 룰북 부록(Appendix)의 대체 프롬프트 중 하나를 랜덤으로 뽑아 이벤트를 교체합니다.">
-                        ✨ 부록 프롬프트 대체
-                      </button>
-                    )}
-                  </div>
-                </div>
-                <p className="prompt-body" style={{
-                  fontStyle: isAltActive ? 'italic' : 'normal',
-                  color: isAltActive ? '#2b2519' : 'inherit'
-                }}>
-                  {activePromptText}
-                </p>
-              </div>
-
-              <div className="dice-roller-box">
-                <div className="dice-group" style={{display:'flex', gap:'1rem'}}>
-                  <div className={`die d10 ${isRolling ? 'roll-anim' : ''}`} data-type="d10">
-                    {d10Val || '?'}
-                  </div>
-                  <div style={{fontSize: '2rem', alignSelf:'center', color:'var(--text-light)'}}>-</div>
-                  <div className={`die d6 ${isRolling ? 'roll-anim' : ''}`} data-type="d6">
-                    {d6Val || '?'}
-                  </div>
-                </div>
-
-                <div style={{flex: 1, display:'flex', flexDirection:'column', gap:'0.5rem'}}>
-                  <button className="btn-medieval" onClick={handleRollDice} disabled={isRolling} style={{width:'100%'}}>
-                    <IconDices /> 주사위 굴리기 & 전진
-                  </button>
-                  <div style={{display:'flex', justifyContent:'space-between'}}>
-                    <button className="btn-gold-outline" style={{padding:'0.2rem 0.5rem', fontSize:'0.8rem'}} onClick={() => handleManualMove('prev')}>
-                      ← 이전 프롬프트
-                    </button>
-                    <button className="btn-gold-outline" style={{padding:'0.2rem 0.5rem', fontSize:'0.8rem'}} onClick={() => handleManualMove('next')}>
-                      다음 프롬프트 →
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-              <div className="journal-editor">
-                <h4 className="gothic-font" style={{fontSize: '1.1rem', display:'flex', alignItems:'center', gap:'0.4rem'}}>
-                  <IconFeather /> 연대기 일지 작성
-                </h4>
-                <span style={{fontSize: '0.8rem', color: 'var(--text-light)'}}>현재 사건에 대한 당신의 대응이나 이야기를 적어 보십시오. 주사위를 굴려 다음 프롬프트로 이동할 때 자동으로 연대기에 보관됩니다.</span>
-                <textarea
-                  className="journal-textarea"
-                  placeholder="여기에 이 프롬프트에서 일어난 당신의 생각이나 이야기를 적으십시오..."
-                  value={currentJournalText}
-                  onChange={e => setCurrentJournalText(e.target.value)}
-                />
-              </div>
-
-              <div className="ornate-divider"><span>◈ 연대기 타임라인 ◈</span></div>
-
-              <div style={{maxHeight: '400px', overflowY: 'auto', paddingRight:'0.5rem'}}>
-                {gameState.journal.length === 0 ? (
-                  <p style={{textAlign:'center', color:'var(--text-light)', fontStyle:'italic'}}>아직 기록된 타임라인이 없습니다. 첫 주사위를 굴려 이야기를 시작하십시오.</p>
-                ) : (
-                  <div className="timeline-list">
-                    {gameState.journal.map(item => (
-                      <div key={item.id} className="timeline-item">
-                        <div className="timeline-dot"></div>
-                        <div className="timeline-content">
-                          <div className="timeline-meta">
-                            <span>프롬프트 #{item.promptId} (방문 {item.visitCount}회)</span>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                              <span>🎲 {item.rollText}</span>
-                              {editingJournalId !== item.id && (
-                                <div style={{ display: 'inline-flex', gap: '0.2rem', marginLeft: '0.5rem' }}>
-                                  <button
-                                    className="icon-btn"
-                                    title="수정"
-                                    style={{ padding: '0.1rem', color: 'var(--gold-dark)' }}
-                                    onClick={() => handleStartEditJournal(item.id, item.textContent)}
-                                  >
-                                    <IconEdit />
-                                  </button>
-                                  <button
-                                    className="icon-btn delete"
-                                    title="삭제"
-                                    style={{ padding: '0.1rem' }}
-                                    onClick={() => handleDeleteJournalEntry(item.id)}
-                                  >
-                                    <IconTrash />
-                                  </button>
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                          {editingJournalId === item.id ? (
-                            <div style={{ marginTop: '0.5rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                              <textarea
-                                className="input-medieval"
-                                style={{
-                                  width: '100%',
-                                  minHeight: '80px',
-                                  fontSize: '0.95rem',
-                                  padding: '0.5rem',
-                                  backgroundColor: 'rgba(255, 255, 255, 0.7)',
-                                  color: '#2b2519',
-                                  border: '1px solid var(--gold-accent)',
-                                  borderRadius: '3px',
-                                  resize: 'vertical',
-                                  fontFamily: 'inherit'
-                                }}
-                                value={editingJournalText}
-                                onChange={e => setEditingJournalText(e.target.value)}
-                              />
-                              <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
-                                <button
-                                  className="btn-gold-outline"
-                                  style={{ padding: '0.2rem 0.6rem', fontSize: '0.8rem' }}
-                                  onClick={handleCancelEditJournal}
-                                >
-                                  취소
-                                </button>
-                                <button
-                                  className="btn-medieval"
-                                  style={{ padding: '0.2rem 0.6rem', fontSize: '0.8rem', minHeight: 'auto' }}
-                                  onClick={() => handleSaveEditJournal(item.id)}
-                                >
-                                  저장
-                                </button>
-                              </div>
-                            </div>
-                          ) : (
-                            <p style={{fontSize: '0.95rem', whiteSpace: 'pre-line'}}>{item.textContent}</p>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </section>
-
-            {/* RIGHT PANEL: Memories */}
-            <section className="parchment-card">
-              <h3 className="section-title gothic-font">
-                <IconBook /> 기억 슬롯
-              </h3>
-              <div className="memory-list">
-                <p className="small-text" style={{marginBottom: '0.5rem'}}>기억 슬롯은 5개로 고정됩니다. 각 슬롯에는 최대 3개의 경험을 쌓을 수 있습니다. 꽉 찬 경우 슬롯 전체를 일기장으로 이관하고 공간을 비울 수 있습니다.</p>
-                {gameState.memories.map((mem, idx) => (
-                  <div key={mem.id} className="memory-box">
-                    <div className="memory-header">
-                      <span>기억 슬롯 #{idx + 1} ({mem.experiences.length}/3)</span>
-                      <button 
-                        className="icon-btn" 
-                        title="일기장으로 이관" 
-                        onClick={() => handleMoveToDiary(mem.id)}
-                        disabled={mem.experiences.length === 0}
-                      >
-                        <IconArchive /> <span style={{fontSize:'0.8rem', marginLeft:'0.2rem'}}>일기장 이관</span>
-                      </button>
-                    </div>
-                    
-                    <ul className="experience-list">
-                      {mem.experiences.map(exp => (
-                        <li key={exp.id} className="experience-item" style={{ flexDirection: 'column', alignItems: 'stretch' }}>
-                          {editingExperienceId === exp.id ? (
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', width: '100%' }}>
-                              <textarea
-                                className="input-medieval"
-                                style={{
-                                  width: '100%',
-                                  minHeight: '90px',
-                                  fontSize: '0.95rem',
-                                  lineHeight: '1.6',
-                                  padding: '0.5rem',
-                                  backgroundColor: 'rgba(255, 255, 255, 0.85)',
-                                  border: '1px solid var(--gold-accent)',
-                                  borderRadius: '3px',
-                                  resize: 'vertical',
-                                  outline: 'none',
-                                  fontFamily: 'inherit'
-                                }}
-                                value={editingExperienceText}
-                                onChange={e => setEditingExperienceText(e.target.value)}
-                                onKeyDown={e => {
-                                  if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
-                                    handleSaveEditExperience(mem.id, exp.id);
-                                  }
-                                  if (e.key === 'Escape') {
-                                    handleCancelEditExperience();
-                                  }
-                                }}
-                                placeholder="경험 수정 (Ctrl+Enter 혹은 저장 버튼으로 저장)"
-                                autoFocus
-                              />
-                              <div style={{ display: 'flex', gap: '0.4rem', justifyContent: 'flex-end' }}>
-                                <button
-                                  className="btn-gold-outline"
-                                  style={{ padding: '0.15rem 0.5rem', fontSize: '0.75rem' }}
-                                  onClick={handleCancelEditExperience}
-                                >
-                                  취소
-                                </button>
-                                <button
-                                  className="btn-medieval"
-                                  style={{ padding: '0.15rem 0.5rem', fontSize: '0.75rem', minHeight: 'auto' }}
-                                  onClick={() => handleSaveEditExperience(mem.id, exp.id)}
-                                >
-                                  저장
-                                </button>
-                              </div>
-                            </div>
-                          ) : (
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', width: '100%', gap: '0.5rem' }}>
-                              <span style={{ whiteSpace: 'pre-line', flex: 1 }}>{exp.text}</span>
-                              <div style={{ display: 'flex', gap: '0.2rem', flexShrink: 0, marginTop: '0.15rem' }}>
-                                <button 
-                                  className="icon-btn" 
-                                  title="경험 수정" 
-                                  style={{ color: 'var(--gold-dark)' }}
-                                  onClick={() => handleStartEditExperience(exp.id, exp.text)}
-                                >
-                                  <IconEdit />
-                                </button>
-                                <button 
-                                  className="icon-btn delete" 
-                                  title="잊어버리기(삭제)" 
-                                  onClick={() => handleDeleteExperience(mem.id, exp.id)}
-                                >
-                                  <IconTrash />
-                                </button>
-                              </div>
-                            </div>
-                          )}
-                        </li>
-                      ))}
-                      {mem.experiences.length === 0 && (
-                        <li style={{fontSize:'0.9rem', color:'var(--text-light)', fontStyle:'italic', padding:'0.5rem'}}>비어 있는 기억 공간</li>
-                      )}
-                    </ul>
-
-                    {mem.experiences.length < 3 && (
-                      <div className="add-form" style={{marginBottom:0, marginTop:'0.5rem'}}>
-                        <textarea 
-                          className="input-medieval" 
-                          style={{
-                            flex: 1,
-                            padding: '0.4rem 0.6rem',
-                            fontSize: '0.9rem',
-                            minHeight: '60px',
-                            resize: 'vertical',
-                            lineHeight: '1.5',
-                            fontFamily: 'inherit',
-                            backgroundColor: 'rgba(255, 255, 255, 0.75)',
-                            border: '1px solid var(--gold-accent)',
-                            borderRadius: '3px',
-                            outline: 'none'
-                          }}
-                          placeholder="새 경험 입력... (Ctrl+Enter 혹은 추가 버튼으로 등록)"
-                          value={newExperienceInputs[mem.id] || ''}
-                          onChange={e => setNewExperienceInputs({...newExperienceInputs, [mem.id]: e.target.value})}
-                          onKeyDown={e => {
-                            if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
-                              handleAddExperience(mem.id);
-                            }
-                          }}
-                        />
-                        <button className="btn-gold-outline" style={{padding:'0.3rem 0.6rem'}} onClick={() => handleAddExperience(mem.id)}>
-                          추가
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </section>
-          </div>
-        )}
-
-        {/* 3. SKILLS TAB (Full Width) */}
-        {activeTab === 'skills' && (
-          <section className="parchment-card" style={{ maxWidth: '800px', margin: '0 auto' }}>
-            <h3 className="section-title gothic-font"><IconBook /> 기술 (Skills)</h3>
-            <div style={{marginBottom: '1.5rem', padding: '1.25rem', backgroundColor: 'rgba(143,117,54,0.08)', border: '1px solid var(--gold-dark)', borderRadius: '6px', borderLeft: '4px solid var(--gold-dark)'}}>
-              <p style={{fontSize: '0.95rem', color: 'var(--text-color)', lineHeight: '1.6', margin: 0}}>
-                <strong style={{fontSize: '1.05rem', color: 'var(--crimson-dark)', display: 'block', marginBottom: '0.5rem'}}>⚜️ 기술 (Skills) 관리 & 세부 규칙</strong>
-                당신이 필멸자 시절 연마했거나 뱀파이어가 되며 얻게 된 능력들입니다. 위기를 극복하거나 프롬프트의 지시를 해결할 때 체크(소비)하게 됩니다.
-              </p>
-              <ul style={{fontSize: '0.85rem', color: 'var(--text-light)', marginTop: '0.5rem', paddingLeft: '1.2rem', lineHeight: '1.6', marginBlockEnd: 0}}>
-                <li><strong>초기 생성:</strong> 게임 시작 시 <strong>3가지</strong>의 일반 기술을 자유롭게 기입하여 창조합니다.</li>
-                <li><strong>고대 기술(Ancient Skill) 규칙:</strong> 일반 기술은 수백 년의 세월 동안 기억을 잃을 때(기억 이관/삭제) 망각될 수 있습니다. 반면, <strong>고대 기술</strong>은 피의 비전이나 고대의 맹세 등으로 깊이 각인된 초자연적이고 심오한 지식으로, <strong>기억을 잃거나 이관하여도 결코 잊히지 않고 영구히 보존</strong>됩니다.</li>
-                <li><strong>체크(소비):</strong> 기술을 체크하는 것은 기술이 영구 삭제되는 것이 아니며, 이번 장의 위기를 극복하기 위해 해당 능력을 사용했음을 나타냅니다.</li>
-              </ul>
-            </div>
-            <div className="add-form" style={{display: 'flex', flexDirection: 'column', gap: '0.75rem', padding: '1rem', border: '1px solid var(--gold-dark)', borderRadius: '6px', backgroundColor: 'rgba(255,255,255,0.02)'}}>
-              <div style={{display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap'}}>
-                <label style={{display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.9rem', color: 'var(--text-color)', cursor: 'pointer', whiteSpace: 'nowrap'}}>
-                  <input type="checkbox" checked={newSkillIsAncient} onChange={e => setNewSkillIsAncient(e.target.checked)} style={{cursor: 'pointer'}} /> 고대 기술
-                </label>
-                <input 
-                  type="text" 
-                  className="input-medieval" 
-                  style={{flex: 1, minWidth: '220px'}}
-                  placeholder="기술 명칭 (예: 가학적 정신분석)"
-                  value={newSkillName}
-                  onChange={e => setNewSkillName(e.target.value)}
-                />
-              </div>
-              <div style={{display: 'flex', gap: '0.75rem', alignItems: 'stretch'}}>
-                <textarea 
-                  className="input-medieval" 
-                  style={{flex: 1, minHeight: '60px', padding: '0.5rem', resize: 'vertical', fontFamily: 'inherit', fontSize: '0.95rem', lineHeight: '1.4'}}
-                  placeholder="부연 설명 (예: 눈빛만으로 욕망을 간파함)"
-                  value={newSkillDesc}
-                  onChange={e => setNewSkillDesc(e.target.value)}
-                />
-                <button className="btn-medieval" onClick={handleAddSkill} style={{padding: '0.75rem 1rem', display: 'flex', alignItems: 'center', gap: '0.3rem', whiteSpace: 'nowrap'}}>
-                  <IconPlus /> 추가
-                </button>
-              </div>
-            </div>
-            <div className="item-grid" style={{marginTop: '1.5rem'}}>
-              {[...gameState.skills].sort((a, b) => {
-                if (a.isChecked === b.isChecked) return 0;
-                return a.isChecked ? 1 : -1;
-              }).map(skill => (
-                <div key={skill.id} className={`item-card ${skill.isChecked ? 'checked' : ''}`}>
-                  <div style={{display:'flex', alignItems:'center', gap:'0.75rem', flex: 1}}>
-                    <input 
-                      type="checkbox" 
-                      checked={skill.isChecked} 
-                      onChange={() => handleToggleSkill(skill.id)}
-                      style={{width:'18px', height:'18px', cursor:'pointer'}}
-                    />
-                    {editingSkillId === skill.id ? (
-                      <div style={{display:'flex', flexDirection: 'column', gap:'0.5rem', flex: 1}}>
-                        <div style={{display: 'flex', alignItems: 'center', gap: '0.5rem'}}>
-                          <label style={{display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.85rem', color: 'var(--text-color)', cursor: 'pointer', whiteSpace: 'nowrap'}}>
-                            <input type="checkbox" checked={editingSkillIsAncient} onChange={e => setEditingSkillIsAncient(e.target.checked)} style={{cursor: 'pointer'}} /> 고대 기술
-                          </label>
-                          <input
-                            type="text"
-                            className="input-medieval"
-                            style={{flex: 1, padding: '0.3rem 0.5rem', fontSize: '0.95rem'}}
-                            value={editingSkillName}
-                            placeholder="기술 명칭"
-                            onChange={e => setEditingSkillName(e.target.value)}
-                            autoFocus
-                          />
-                        </div>
-                        <textarea
-                          className="input-medieval"
-                          style={{width: '100%', minHeight: '60px', padding: '0.4rem 0.5rem', fontSize: '0.9rem', lineHeight: '1.4', resize: 'vertical'}}
-                          value={editingSkillDesc}
-                          placeholder="부연 설명 (선택)"
-                          onChange={e => setEditingSkillDesc(e.target.value)}
-                        />
-                      </div>
-                    ) : (
-                      (() => {
-                        const parsed = parseTextWithDescription(skill.name);
-                        return (
-                          <div style={{display:'flex', flexDirection:'column', gap:'0.15rem', flex: 1}}>
-                            <span style={{fontSize:'1.05rem', fontWeight:'bold', color:'var(--text-color)', display:'flex', alignItems:'center', gap:'0.3rem'}}>
-                              {skill.isAncient && <span style={{fontSize:'0.75rem', color:'var(--crimson-primary)', fontWeight:'bold'}}>[고대]</span>}
-                              {parsed.title}
-                            </span>
-                            {parsed.desc && (
-                              <span style={{fontSize:'0.85rem', color:'var(--text-light)', lineHeight:'1.4'}}>
-                                {parsed.desc}
-                              </span>
-                            )}
-                          </div>
-                        );
-                      })()
-                    )}
-                  </div>
-                  <div style={{display:'flex', gap:'0.3rem'}}>
-                    {editingSkillId === skill.id ? (
-                      <>
-                        <button className="btn-medieval" style={{padding:'0.2rem 0.5rem', fontSize:'0.8rem'}} onClick={() => handleSaveEditSkill(skill.id)}>저장</button>
-                        <button className="btn-gold-outline" style={{padding:'0.2rem 0.5rem', fontSize:'0.8rem'}} onClick={() => setEditingSkillId(null)}>취소</button>
-                      </>
-                    ) : (
-                      <>
-                        <button className="icon-btn edit" onClick={() => handleStartEditSkill(skill.id, skill.name)}>
-                          <IconEdit />
-                        </button>
-                        <button className="icon-btn delete" onClick={() => handleDeleteSkill(skill.id)}>
-                          <IconTrash />
-                        </button>
-                      </>
-                    )}
-                  </div>
-                </div>
-              ))}
-              {gameState.skills.length === 0 && <p style={{textAlign:'center', color:'var(--text-light)', width:'100%'}}>아직 보유한 기술이 없습니다.</p>}
-            </div>
-          </section>
-        )}
-
-        {/* 4. RESOURCES TAB (Full Width) */}
-        {activeTab === 'resources' && (
-          <section className="parchment-card" style={{ maxWidth: '800px', margin: '0 auto' }}>
-            <h3 className="section-title gothic-font"><IconBook /> 자원 (Resources)</h3>
-            <div style={{marginBottom: '1.5rem', padding: '1.25rem', backgroundColor: 'rgba(143,117,54,0.08)', border: '1px solid var(--gold-dark)', borderRadius: '6px', borderLeft: '4px solid var(--gold-dark)'}}>
-              <p style={{fontSize: '0.95rem', color: 'var(--text-color)', lineHeight: '1.6', margin: 0}}>
-                <strong style={{fontSize: '1.05rem', color: 'var(--crimson-dark)', display: 'block', marginBottom: '0.5rem'}}>⚜️ 자원 (Resources) 관리 & 세부 규칙</strong>
-                물리적 재산, 가보, 은신처 등 당신이 소유한 유용한 물건이나 자산입니다. 위기를 모면하거나 대가를 치를 때 소실될 수 있습니다.
-              </p>
-              <ul style={{fontSize: '0.85rem', color: 'var(--text-light)', marginTop: '0.5rem', paddingLeft: '1.2rem', lineHeight: '1.6', marginBlockEnd: 0}}>
-                <li><strong>초기 생성:</strong> 게임 시작 시 <strong>3가지</strong>의 일반 자원을 자유롭게 기입하여 창조합니다.</li>
-                <li><strong>고정 자원(Stationary Resource) 규칙:</strong> 저택, 수도원, 버려진 성곽처럼 물리적으로 이동할 수 없는 자산입니다. 뱀파이어는 흔적을 지우기 위해 고향을 급히 떠나거나 도망쳐야 할 때가 많습니다. **이주하거나 도망쳐야 하는 상황이 닥치면 고정 자원은 가져갈 수 없으므로 강제로 버려지거나 분실 처리**됩니다.</li>
-                <li><strong>소실과 소모:</strong> 프롬프트 지시로 자원을 소모하면 해당 자원을 영구히 체크하거나 목록에서 제거해야 합니다.</li>
-              </ul>
-            </div>
-            <div className="add-form" style={{display: 'flex', flexDirection: 'column', gap: '0.75rem', padding: '1rem', border: '1px solid var(--gold-dark)', borderRadius: '6px', backgroundColor: 'rgba(255,255,255,0.02)'}}>
-              <div style={{display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap'}}>
-                <label style={{display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.9rem', color: 'var(--text-color)', cursor: 'pointer', whiteSpace: 'nowrap'}}>
-                  <input type="checkbox" checked={newResourceIsStationary} onChange={e => setNewResourceIsStationary(e.target.checked)} style={{cursor: 'pointer'}} /> 고정 자원
-                </label>
-                <input 
-                  type="text" 
-                  className="input-medieval" 
-                  style={{flex: 1, minWidth: '220px'}}
-                  placeholder="자원 명칭 (예: 옛 고성)"
-                  value={newResourceName}
-                  onChange={e => setNewResourceName(e.target.value)}
-                />
-              </div>
-              <div style={{display: 'flex', gap: '0.75rem', alignItems: 'stretch'}}>
-                <textarea 
-                  className="input-medieval" 
-                  style={{flex: 1, minHeight: '60px', padding: '0.5rem', resize: 'vertical', fontFamily: 'inherit', fontSize: '0.95rem', lineHeight: '1.4'}}
-                  placeholder="부연 설명 (예: 민가와 격리되어 은신하기 좋은 사저)"
-                  value={newResourceDesc}
-                  onChange={e => setNewResourceDesc(e.target.value)}
-                />
-                <button className="btn-medieval" onClick={handleAddResource} style={{padding: '0.75rem 1rem', display: 'flex', alignItems: 'center', gap: '0.3rem', whiteSpace: 'nowrap'}}>
-                  <IconPlus /> 추가
-                </button>
-              </div>
-            </div>
-            <div className="item-grid" style={{marginTop: '1.5rem'}}>
-              {gameState.resources.map(res => (
-                <div key={res.id} className="item-card">
-                  <div style={{display:'flex', flexDirection:'column', gap:'0.2rem', flex: 1}}>
-                    <span style={{fontSize:'0.75rem', fontWeight:'bold', color: res.isStationary ? 'var(--crimson-primary)' : 'var(--text-light)'}}>
-                      {res.isStationary ? '고정 자원 (Stationary)' : '이동 가능'}
-                    </span>
-                    {editingResourceId === res.id ? (
-                      <div style={{display:'flex', flexDirection: 'column', gap:'0.5rem', flex: 1, marginTop:'0.2rem'}}>
-                        <div style={{display: 'flex', alignItems: 'center', gap: '0.5rem'}}>
-                          <label style={{display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.85rem', color: 'var(--text-color)', cursor: 'pointer', whiteSpace: 'nowrap'}}>
-                            <input type="checkbox" checked={editingResourceIsStationary} onChange={e => setEditingResourceIsStationary(e.target.checked)} style={{cursor: 'pointer'}} /> 고정 자원
-                          </label>
-                          <input
-                            type="text"
-                            className="input-medieval"
-                            style={{flex: 1, padding: '0.3rem 0.5rem', fontSize: '0.95rem'}}
-                            value={editingResourceName}
-                            placeholder="자원 명칭"
-                            onChange={e => setEditingResourceName(e.target.value)}
-                            autoFocus
-                          />
-                        </div>
-                        <textarea
-                          className="input-medieval"
-                          style={{width: '100%', minHeight: '60px', padding: '0.4rem 0.5rem', fontSize: '0.9rem', lineHeight: '1.4', resize: 'vertical'}}
-                          value={editingResourceDesc}
-                          placeholder="부연 설명 (선택)"
-                          onChange={e => setEditingResourceDesc(e.target.value)}
-                        />
-                      </div>
-                    ) : (
-                      (() => {
-                        const parsed = parseTextWithDescription(res.name);
-                        return (
-                          <div style={{display:'flex', flexDirection:'column', gap:'0.15rem', marginTop:'0.2rem'}}>
-                            <span style={{fontSize:'1.05rem', fontWeight:'bold', color:'var(--text-color)'}}>
-                              {parsed.title}
-                            </span>
-                            {parsed.desc && (
-                              <span style={{fontSize:'0.85rem', color:'var(--text-light)', lineHeight:'1.4'}}>
-                                {parsed.desc}
-                              </span>
-                            )}
-                          </div>
-                        );
-                      })()
-                    )}
-                  </div>
-                  <div style={{display:'flex', gap:'0.3rem'}}>
-                    {editingResourceId === res.id ? (
-                      <>
-                        <button className="btn-medieval" style={{padding:'0.2rem 0.5rem', fontSize:'0.8rem'}} onClick={() => handleSaveEditResource(res.id)}>저장</button>
-                        <button className="btn-gold-outline" style={{padding:'0.2rem 0.5rem', fontSize:'0.8rem'}} onClick={() => setEditingResourceId(null)}>취소</button>
-                      </>
-                    ) : (
-                      <>
-                        <button className="icon-btn edit" onClick={() => handleStartEditResource(res.id, res.name)}>
-                          <IconEdit />
-                        </button>
-                        <button className="icon-btn delete" onClick={() => handleDeleteResource(res.id)}>
-                          <IconTrash />
-                        </button>
-                      </>
-                    )}
-                  </div>
-                </div>
-              ))}
-              {gameState.resources.length === 0 && <p style={{textAlign:'center', color:'var(--text-light)', width:'100%'}}>아직 보유한 자원이 없습니다.</p>}
-            </div>
-          </section>
-        )}
-
-        {/* 5. CHARACTERS TAB (Full Width) */}
-        {activeTab === 'characters' && (
-          <section className="parchment-card" style={{ maxWidth: '800px', margin: '0 auto' }}>
-            <h3 className="section-title gothic-font"><IconBook /> 등장인물 (Characters)</h3>
-            <div style={{marginBottom: '1.5rem', padding: '1.25rem', backgroundColor: 'rgba(143,117,54,0.08)', border: '1px solid var(--gold-dark)', borderRadius: '6px', borderLeft: '4px solid var(--gold-dark)'}}>
-              <p style={{fontSize: '0.95rem', color: 'var(--text-color)', lineHeight: '1.6', margin: 0}}>
-                <strong style={{fontSize: '1.05rem', color: 'var(--crimson-dark)', display: 'block', marginBottom: '0.5rem'}}>⚜️ 등장인물 (Characters) 관리 & 세부 규칙</strong>
-                당신의 서사 속에서 조력자, 연인, 스승 혹은 적대자로 나타나는 생명체들입니다.
-              </p>
-              <ul style={{fontSize: '0.85rem', color: 'var(--text-light)', marginTop: '0.5rem', paddingLeft: '1.2rem', lineHeight: '1.6', marginBlockEnd: 0}}>
-                <li><strong>초기 생성:</strong> 게임 시작 시 **가장 가까운 사람 1명, 친구/연인 1명, 지역 유력자 1명** 등 필멸자 3명과 당신을 창조한 불멸자 뱀파이어 1명을 포함하여 창조합니다.</li>
-                <li><strong>필멸자(Mortal) 세부 규칙:</strong> 필멸자는 순수한 인간입니다. 세월의 흐름에 저항할 수 없으므로, **이야기가 수십 년 혹은 100년 이상 흘렀다면 필멸자 캐릭터들은 자연스럽게 노화하거나 사망**하게 됩니다. 이들의 죽음을 연대기에 자연스레 녹여내고, 캐릭터 카드의 생사(Alive) 체크박스를 해제하여 사망 처리하십시오.</li>
-                <li><strong>불멸자(Immortal) 세부 규칙:</strong> 당신을 탄생시킨 창조주나 다른 뱀파이어, 혹은 초자연적 존재들입니다. 이들은 세월이 흘러도 노화하거나 자연사하지 않고 영원히 생존하며 당신의 삶에 지대한 영향을 줍니다.</li>
-              </ul>
-            </div>
-            <div className="add-form" style={{display: 'flex', flexDirection: 'column', gap: '0.75rem', padding: '1rem', border: '1px solid var(--gold-dark)', borderRadius: '6px', backgroundColor: 'rgba(255,255,255,0.02)'}}>
-              <div style={{display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap'}}>
-                <select 
-                  className="input-medieval" 
-                  style={{width: 'auto', padding: '0.4rem'}}
-                  value={newCharacterType}
-                  onChange={e => setNewCharacterType(e.target.value as 'mortal'|'immortal')}
-                >
-                  <option value="mortal">필멸자(Mortal)</option>
-                  <option value="immortal">불멸자(Immortal)</option>
-                </select>
-                <input 
-                  type="text" 
-                  className="input-medieval" 
-                  style={{flex: 1, minWidth: '220px'}}
-                  placeholder="인물 이름 (예: 안나)"
-                  value={newCharacterName}
-                  onChange={e => setNewCharacterName(e.target.value)}
-                />
-              </div>
-              <div style={{display: 'flex', gap: '0.75rem', alignItems: 'stretch'}}>
-                <textarea 
-                  className="input-medieval" 
-                  style={{flex: 1, minHeight: '60px', padding: '0.5rem', resize: 'vertical', fontFamily: 'inherit', fontSize: '0.95rem', lineHeight: '1.4'}}
-                  placeholder="관계/부연 설명 (예: 나의 충직한 하녀)"
-                  value={newCharacterDesc}
-                  onChange={e => setNewCharacterDesc(e.target.value)}
-                />
-                <button className="btn-medieval" onClick={handleAddCharacter} style={{padding: '0.75rem 1rem', display: 'flex', alignItems: 'center', gap: '0.3rem', whiteSpace: 'nowrap'}}>
-                  <IconPlus /> 추가
-                </button>
-              </div>
-            </div>
-            <div className="item-grid" style={{marginTop: '1.5rem'}}>
-              {[...gameState.characters].sort((a, b) => {
-                if (a.isAlive === b.isAlive) return 0;
-                return a.isAlive ? -1 : 1;
-              }).map(char => (
-                <div key={char.id} className={`item-card ${!char.isAlive ? 'dead' : ''}`} style={{borderColor: char.type === 'immortal' ? 'var(--crimson-primary)' : 'var(--gold-accent)'}}>
-                  <div style={{display:'flex', flexDirection:'column', gap:'0.2rem', flex: 1}}>
-                    <span style={{fontSize:'0.75rem', fontWeight:'bold', color: char.type==='immortal'?'var(--crimson-primary)':'var(--text-light)'}}>
-                      {char.type === 'immortal' ? '불멸자' : '필멸자'} {char.isAlive ? '' : '(사망/소실)'}
-                    </span>
-                    {editingCharacterId === char.id ? (
-                      <div style={{display:'flex', flexDirection: 'column', gap:'0.5rem', flex: 1, marginTop:'0.2rem'}}>
-                        <div style={{display: 'flex', alignItems: 'center', gap: '0.5rem'}}>
-                          <select 
-                            className="input-medieval" 
-                            style={{width: 'auto', padding: '0.2rem', fontSize: '0.85rem'}}
-                            value={editingCharacterType}
-                            onChange={e => setEditingCharacterType(e.target.value as 'mortal'|'immortal')}
-                          >
-                            <option value="mortal">필멸자(Mortal)</option>
-                            <option value="immortal">불멸자(Immortal)</option>
-                          </select>
-                          <input
-                            type="text"
-                            className="input-medieval"
-                            style={{flex: 1, padding: '0.3rem 0.5rem', fontSize: '0.95rem'}}
-                            value={editingCharacterName}
-                            placeholder="이름"
-                            onChange={e => setEditingCharacterName(e.target.value)}
-                            autoFocus
-                          />
-                        </div>
-                        <textarea
-                          className="input-medieval"
-                          style={{width: '100%', minHeight: '60px', padding: '0.4rem 0.5rem', fontSize: '0.9rem', lineHeight: '1.4', resize: 'vertical'}}
-                          value={editingCharacterDesc}
-                          placeholder="관계/설명 (선택)"
-                          onChange={e => setEditingCharacterDesc(e.target.value)}
-                        />
-                      </div>
-                    ) : (
-                      (() => {
-                        const parsed = parseTextWithDescription(char.name);
-                        return (
-                          <div style={{display:'flex', flexDirection:'column', gap:'0.15rem', marginTop:'0.2rem'}}>
-                            <span style={{fontSize:'1.05rem', fontWeight:'bold', color:'var(--text-color)'}}>
-                              {parsed.title}
-                            </span>
-                            {parsed.desc && (
-                              <span style={{fontSize:'0.85rem', color:'var(--text-light)', lineHeight:'1.4'}}>
-                                {parsed.desc}
-                              </span>
-                            )}
-                          </div>
-                        );
-                      })()
-                    )}
-                  </div>
-                  <div style={{display:'flex', gap:'0.4rem', alignItems: 'center'}}>
-                    {editingCharacterId === char.id ? (
-                      <>
-                        <button className="btn-medieval" style={{padding:'0.2rem 0.5rem', fontSize:'0.8rem'}} onClick={() => handleSaveEditCharacter(char.id)}>저장</button>
-                        <button className="btn-gold-outline" style={{padding:'0.2rem 0.5rem', fontSize:'0.8rem'}} onClick={() => setEditingCharacterId(null)}>취소</button>
-                      </>
-                    ) : (
-                      <>
-                        <button className="icon-btn edit" onClick={() => handleStartEditCharacter(char.id, char.name)}>
-                          <IconEdit />
-                        </button>
-                        {char.isAlive && (
-                          <button className="icon-btn delete" style={{fontSize:'0.8rem'}} onClick={() => handleKillCharacter(char.id)}>
-                            ☠️
-                          </button>
-                        )}
-                        <button className="icon-btn delete" onClick={() => handleDeleteCharacter(char.id)}>
-                          <IconTrash />
-                        </button>
-                      </>
-                    )}
-                  </div>
-                </div>
-              ))}
-              {gameState.characters.length === 0 && <p style={{textAlign:'center', color:'var(--text-light)', width:'100%'}}>아직 등록된 인물이 없습니다.</p>}
-            </div>
-          </section>
-        )}
-
-        {/* 6. MARKS TAB (Full Width) */}
-        {activeTab === 'marks' && (
-          <section className="parchment-card" style={{ maxWidth: '800px', margin: '0 auto' }}>
-            <h3 className="section-title gothic-font"><IconBook /> 표식 (Marks)</h3>
-            <div style={{marginBottom: '1.5rem', padding: '1.25rem', backgroundColor: 'rgba(143,117,54,0.08)', border: '1px solid var(--gold-dark)', borderRadius: '6px', borderLeft: '4px solid var(--gold-dark)'}}>
-              <p style={{fontSize: '0.95rem', color: 'var(--text-color)', lineHeight: '1.6', margin: 0}}>
-                <strong style={{fontSize: '1.05rem', color: 'var(--crimson-dark)', display: 'block', marginBottom: '0.5rem'}}>⚜️ 표식 (Marks) 관리 & 세부 규칙</strong>
-                당신이 필멸성을 잃고 뱀파이어화되면서 신체적, 또는 정신적으로 드러나는 기이하고 무서운 증표들입니다.
-              </p>
-              <ul style={{fontSize: '0.85rem', color: 'var(--text-light)', marginTop: '0.5rem', paddingLeft: '1.2rem', lineHeight: '1.6', marginBlockEnd: 0}}>
-                <li><strong>초기 생성:</strong> 게임 시작 시 흡혈귀 기원(Origin)과 함께 나타난 <strong>1가지</strong>의 첫 표식을 설정합니다.</li>
-                <li><strong>인간성 상실과 발각 규칙:</strong> 표식이 늘어난다는 것은 당신의 몸과 영혼이 인간에게서 점점 더 멀어짐을 의미합니다. 표식이 너무 많아지면 필멸자 사회에 섞여 살 수 없으며, 일반인들에게 흡혈귀 정체가 쉽게 발각되어 결국 거처를 옮기거나(자원 소실) 사냥꾼의 침입을 받는 등의 서사적 위험을 초래합니다.</li>
-                <li><strong>초자연적 권능:</strong> 특정 표식은 인간을 초월한 비행 능력, 재생력, 동물 교감 등 강력한 힘의 원천으로 기록될 수 있습니다.</li>
-              </ul>
-            </div>
-            <div className="add-form" style={{display: 'flex', flexDirection: 'column', gap: '0.75rem', padding: '1rem', border: '1px solid var(--gold-dark)', borderRadius: '6px', backgroundColor: 'rgba(255,255,255,0.02)'}}>
-              <div style={{display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap'}}>
-                <input 
-                  type="text" 
-                  className="input-medieval" 
-                  style={{flex: 1, minWidth: '220px'}}
-                  placeholder="표식 이름 (예: 얼음 같은 피부)"
-                  value={newMarkName}
-                  onChange={e => setNewMarkName(e.target.value)}
-                />
-              </div>
-              <div style={{display: 'flex', gap: '0.75rem', alignItems: 'stretch'}}>
-                <textarea 
-                  className="input-medieval" 
-                  style={{flex: 1, minHeight: '60px', padding: '0.5rem', resize: 'vertical', fontFamily: 'inherit', fontSize: '0.95rem', lineHeight: '1.4'}}
-                  placeholder="부연 설명 (예: 만지는 사람마다 소스라치게 놀람)"
-                  value={newMarkDesc}
-                  onChange={e => setNewMarkDesc(e.target.value)}
-                />
-                <button className="btn-medieval" onClick={handleAddMark} style={{padding: '0.75rem 1rem', display: 'flex', alignItems: 'center', gap: '0.3rem', whiteSpace: 'nowrap'}}>
-                  <IconPlus /> 추가
-                </button>
-              </div>
-            </div>
-            <div className="item-grid" style={{marginTop: '1.5rem'}}>
-              {gameState.marks.map(mark => (
-                <div key={mark.id} className="item-card" style={{borderStyle:'dashed', borderColor:'var(--crimson-dark)'}}>
-                  <div style={{flex: 1}}>
-                    {editingMarkId === mark.id ? (
-                      <div style={{display:'flex', flexDirection: 'column', gap:'0.5rem', flex: 1}}>
-                        <input
-                          type="text"
-                          className="input-medieval"
-                          style={{width: '100%', padding: '0.3rem 0.5rem', fontSize: '0.95rem'}}
-                          value={editingMarkName}
-                          placeholder="표식 이름"
-                          onChange={e => setEditingMarkName(e.target.value)}
-                          autoFocus
-                        />
-                        <textarea
-                          className="input-medieval"
-                          style={{width: '100%', minHeight: '60px', padding: '0.4rem 0.5rem', fontSize: '0.9rem', lineHeight: '1.4', resize: 'vertical'}}
-                          value={editingMarkDesc}
-                          placeholder="부연 설명 (선택)"
-                          onChange={e => setEditingMarkDesc(e.target.value)}
-                        />
-                      </div>
-                    ) : (
-                      (() => {
-                        const parsed = parseTextWithDescription(mark.description);
-                        return (
-                          <div style={{display:'flex', flexDirection:'column', gap:'0.15rem'}}>
-                            <span style={{fontSize:'1.05rem', fontWeight:'bold', color:'var(--text-color)'}}>
-                              {parsed.title}
-                            </span>
-                            {parsed.desc && (
-                              <span style={{fontSize:'0.85rem', color:'var(--text-light)', lineHeight:'1.4'}}>
-                                {parsed.desc}
-                              </span>
-                            )}
-                          </div>
-                        );
-                      })()
-                    )}
-                  </div>
-                  <div style={{display:'flex', gap:'0.3rem'}}>
-                    {editingMarkId === mark.id ? (
-                      <>
-                        <button className="btn-medieval" style={{padding:'0.2rem 0.5rem', fontSize:'0.8rem'}} onClick={() => handleSaveEditMark(mark.id)}>저장</button>
-                        <button className="btn-gold-outline" style={{padding:'0.2rem 0.5rem', fontSize:'0.8rem'}} onClick={() => setEditingMarkId(null)}>취소</button>
-                      </>
-                    ) : (
-                      <>
-                        <button className="icon-btn edit" onClick={() => handleStartEditMark(mark.id, mark.description)}>
-                          <IconEdit />
-                        </button>
-                        <button className="icon-btn delete" onClick={() => handleDeleteMark(mark.id)}>
-                          <IconTrash />
-                        </button>
-                      </>
-                    )}
-                  </div>
-                </div>
-              ))}
-              {gameState.marks.length === 0 && <p style={{textAlign:'center', color:'var(--text-light)', width:'100%'}}>아직 새겨진 표식이 없습니다.</p>}
-            </div>
-          </section>
-        )}
-
-        {/* 7. DIARY TAB (Full Width) */}
-        {activeTab === 'diary' && (
-          <section className="parchment-card" style={{ maxWidth: '800px', margin: '0 auto' }}>
-            <h3 className="section-title gothic-font"><IconBook /> 일기장 (Archived Memories)</h3>
-            <div style={{display:'flex', flexDirection:'column', gap:'1rem'}}>
-              <p className="small-text">일기장으로 이관된 소중한 기억들의 뭉치입니다. 뱀파이어 전용 기록실로서, 보관된 역사적 사실이나 서사를 오타 교정 등을 위해 자유롭게 수정하고 정리하실 수 있습니다.</p>
-              {gameState.diary.map((entry, dIdx) => (
-                <div key={entry.id} className="memory-box" style={{borderColor: 'var(--gold-dark)', background:'rgba(143,117,54,0.1)'}}>
-                  <div className="memory-header" style={{color:'var(--crimson-dark)'}}>
-                    <span>일기장 묶음 #{gameState.diary.length - dIdx}</span>
-                    <span style={{fontSize:'0.75rem', fontWeight:'normal'}}>{new Date(entry.timestamp).toLocaleDateString('ko-KR')}</span>
-                  </div>
-                  <ul className="experience-list">
-                    {entry.experiences.map(e => (
-                      <li key={e.id} className="experience-item" style={{borderLeftColor: 'var(--crimson-dark)', background:'rgba(255,255,255,0.5)', whiteSpace: 'pre-line', flexDirection: 'column', alignItems: 'stretch'}}>
-                        {editingDiaryExpId === e.id ? (
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', width: '100%' }}>
-                            <textarea
-                              className="input-medieval"
-                              style={{
-                                width: '100%',
-                                minHeight: '80px',
-                                fontSize: '0.95rem',
-                                padding: '0.5rem',
-                                backgroundColor: 'rgba(255, 255, 255, 0.85)',
-                                border: '1px solid var(--gold-accent)',
-                                borderRadius: '3px',
-                                resize: 'vertical',
-                                fontFamily: 'inherit'
-                              }}
-                              value={editingDiaryExpText}
-                              onChange={e => setEditingDiaryExpText(e.target.value)}
-                              autoFocus
-                            />
-                            <div style={{ display: 'flex', gap: '0.4rem', justifyContent: 'flex-end' }}>
-                              <button
-                                className="btn-gold-outline"
-                                style={{ padding: '0.15rem 0.5rem', fontSize: '0.75rem' }}
-                                onClick={handleCancelEditDiaryExp}
-                              >
-                                취소
-                              </button>
-                              <button
-                                className="btn-medieval"
-                                style={{ padding: '0.15rem 0.5rem', fontSize: '0.75rem', minHeight: 'auto' }}
-                                onClick={() => handleSaveEditDiaryExp(entry.id, e.id)}
-                              >
-                                저장
-                              </button>
-                            </div>
-                          </div>
-                        ) : (
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', width: '100%', gap: '0.5rem' }}>
-                            <span style={{ flex: 1 }}>{e.text}</span>
-                            <div style={{ display: 'flex', gap: '0.2rem', flexShrink: 0 }}>
-                              <button 
-                                className="icon-btn" 
-                                title="수정" 
-                                style={{ color: 'var(--gold-dark)', padding: '0.1rem' }}
-                                onClick={() => handleStartEditDiaryExp(e.id, e.text)}
-                              >
-                                <IconEdit />
-                              </button>
-                              <button 
-                                className="icon-btn delete" 
-                                title="삭제" 
-                                style={{ padding: '0.1rem' }}
-                                onClick={() => handleDeleteDiaryExp(entry.id, e.id)}
-                              >
-                                <IconTrash />
-                              </button>
-                            </div>
-                          </div>
-                        )}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              ))}
-              {gameState.diary.length === 0 && <p style={{textAlign:'center', color:'var(--text-light)', fontStyle:'italic', padding:'1rem'}}>일기장이 비어 있습니다.</p>}
-            </div>
-          </section>
-        )}
-
-        {/* 8. MANUAL TAB (Full Width) */}
-        {activeTab === 'manual' && (
-          <section className="parchment-card" style={{ maxWidth: '800px', margin: '0 auto' }}>
-            <h3 className="section-title gothic-font"><IconBook /> 게임 설명서</h3>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', lineHeight: '1.8', letterSpacing: '-0.04em' }}>
-              <p className="small-text" style={{ borderBottom: '1px solid rgba(197, 160, 89, 0.25)', paddingBottom: '0.5rem', marginBottom: '0.5rem', fontWeight: 'bold' }}>
-                📖 천년령 흡혈귀 (Thousand Year Old Vampire) 게임 규칙 요약
-              </p>
-              <p>
-                <strong>1. 게임의 목표와 시간의 흐름</strong><br/>
-                이 게임은 수백 년에 걸친 흡혈귀의 서사를 일기 형태로 기록하는 솔로 TRPG입니다. [시간의 흐름] 패널에서 '주사위 굴리기'를 누르면, `d10 - d6` 연산 값만큼 프롬프트 페이지를 앞으로 이동하며 새로운 사건을 맞이합니다.
-              </p>
-              <p>
-                <strong>2. 기억(Memory)과 일기장(Diary)</strong><br/>
-                흡혈귀의 뇌 용량은 한계가 있습니다. 기억 슬롯은 최대 5개뿐이며, 한 슬롯에 3개의 <strong>경험(Experience)</strong>만 담을 수 있습니다. 기억 슬롯이 가득 차면 오래된 슬롯 하나를 <strong>일기장(Diary)</strong>으로 이관해야만 새로운 기억을 저장할 수 있습니다. 일기장에 들어간 기억은 흡혈귀 본인도 점차 그 진위를 잊게 됩니다.
-              </p>
-              <p>
-                <strong>3. 기술(Skills)과 자원(Resources)의 상실</strong><br/>
-                프롬프트의 지시에 따라 당신은 특정한 기술이나 자원을 <strong>소비(Check)</strong>하거나 잃어버려야 할 수 있습니다. 잃을 자원이 없다면 더 끔찍한 대가를 치러야 할지도 모릅니다.
-              </p>
-              <p>
-                <strong>4. 등장인물(Characters)과 표식(Marks)</strong><br/>
-                새로운 인물이 서사에 합류하거나, 흡혈귀 사냥꾼에게 쫓기게 될 수 있습니다. 뱀파이어로서 몸에 지워지지 않는 새로운 이형의 <strong>표식</strong>이 생겨나기도 합니다. 프롬프트가 지시하는 대로 탭에 이동하여 시트를 갱신하십시오.
-              </p>
-              <p style={{ color: 'var(--crimson-primary)', fontStyle: 'italic', marginTop: '1rem', textAlign: 'center' }}>
-                "모든 것을 잃고, 모든 것을 잊어버리십시오. 그것이 불멸의 대가입니다."
-              </p>
-            </div>
-          </section>
-        )}
-      </main>
-    </div>
-  );
+  return <div className="modal-backdrop" onMouseDown={event => {
+    if (event.target === event.currentTarget) close();
+  }}><div className="modal" role="dialog" aria-modal="true" aria-label={title} ref={element}><div className="modal-header"><h2>{title}</h2><button className="icon-button" onClick={close} aria-label="창 닫기"><X size={20} /></button></div><div className="modal-body">{children}</div>{footer && <div className="modal-footer">{footer}</div>}</div></div>;
 }
-
+function Field({
+  label,
+  hint,
+  children
+}: {
+  label: string;
+  hint?: string;
+  children: ReactNode;
+}) {
+  return <label className="form-field"><span className="field-label">{label}</span>{children}{hint && <span className="field-hint">{hint}</span>}</label>;
+}
+const emptySetup: Setup = {
+  name: '',
+  origin: '',
+  skills: '',
+  resources: '',
+  mortals: '',
+  immortal: '',
+  mark: '',
+  memories: ['', '', '', '', ''],
+  mode: 'journal'
+};
+function setupFromGame(game: GameState): Setup {
+  try {
+    const saved = readDraft('setup');
+    if (saved && !game.setupComplete) return {
+      ...emptySetup,
+      ...JSON.parse(saved)
+    };
+  } catch {/* Ignore a damaged draft. */}
+  return {
+    name: game.characterName,
+    origin: game.vampireOrigin,
+    skills: game.skills.map(item => item.name).join('\n'),
+    resources: game.resources.map(item => `${item.isStationary ? '[정착] ' : ''}${item.name}`).join('\n'),
+    mortals: game.characters.filter(item => item.type === 'mortal').map(item => item.name).join('\n'),
+    immortal: game.characters.find(item => item.type === 'immortal')?.name ?? '',
+    mark: game.marks[0]?.description ?? '',
+    memories: Array.from({
+      length: 5
+    }, (_, index) => game.memories[index]?.experiences[0]?.text ?? ''),
+    mode: game.playMode ?? 'journal'
+  };
+}
+const sample: Setup = {
+  name: '서윤',
+  origin: '고려 말, 개경의 서고를 지키던 필사자. 불에 탄 책을 구하려다 영원한 밤을 얻었다.',
+  skills: '기록을 읽는 눈\n거짓말을 알아채기\n조용한 발걸음',
+  resources: '스승의 먹과 벼루\n[정착] 강가의 작은 서고\n누이의 은비녀',
+  mortals: '연화: 내 귀가를 기다리는 누이\n도겸: 글을 가르쳐 준 스승\n우진: 서고에 책을 팔러 오는 친구',
+  immortal: '백야: 불타는 서고에서 나를 꺼낸 이름 없는 귀족',
+  mark: '피가 흐르지 않는 손목의 상처; 긴 소매로 가린다.',
+  memories: ['나는 개경의 필사자 서윤이었다; 종이 위의 말만은 오래 살아남으리라 믿었다.', '연화는 첫 품삯으로 은비녀를 샀다; 그것을 맡길 만큼 나를 믿었다.', '도겸의 벼루로 밤새 글을 베꼈다; 스승은 내 눈이 진실을 알아본다고 했다.', '우진과 강가 서고에서 금서를 숨겼다; 우리는 서로의 비밀을 지키기로 했다.', '백야가 불길 속에서 내 손목을 물었다; 구원이라고 여긴 것이 끝나지 않는 갈증이었다.'],
+  mode: 'journal'
+};
+const ruleNotes = [['01 / CREATION · PDF 21–22쪽', '인간이었던 당신부터', '필멸자 최소 3명, 불멸자 1명, 기술 3개, 자원 3개, 표식 1개를 만듭니다. 다섯 기억에는 경험 한 문장씩을 씁니다. 첫 경험은 인간 시절, 가운데 세 경험은 특성 두 가지의 관계, 마지막은 흡혈귀가 된 사건을 담습니다.'], ['02 / EXPERIENCE · PDF 10–13, 26쪽', '사건 하나, 경험 한 문장', '경험은 1인칭으로 사건과 그 의미를 담습니다. 관련된 경험을 같은 기억에 넣되 한 기억에는 3개까지 담습니다. 자리가 없거나 주제가 다르면 기억 전체를 잊거나 일기장으로 옮깁니다. 사건의 별도 지시 없이는 경험을 고치거나 하나만 지우지 않습니다.'], ['03 / DIARY · PDF 16쪽', '당신 대신 기억하는 물건', '일기장은 자원 하나이며 동시에 하나만 소유합니다. 기억을 최대 4개 보관하며, 옮긴 기억에는 경험을 더하지 않습니다. 일기장을 잃으면 그 안의 기억도 잃습니다. 기본 규칙으로는 일기장을 다시 머릿속에 옮길 수 없습니다.'], ['04 / MOVEMENT · PDF 23쪽', '열 면체에서 여섯 면체를 빼기', '사건에 답한 뒤 d10−d6만큼 이동합니다. 0이면 같은 사건의 다음 문단을 읽습니다. 모든 문단에 답한 번호에 도착하면 다음 번호로 넘어가며, 소진된 번호를 연속해서 건너뜁니다. 첫 번호 이전에는 1번으로 돌아옵니다.'], ['05 / COSTS · PDF 17–18, 24쪽', '치러야 할 대가는 남는다', '기술은 한 번만 체크합니다. 체크할 기술이 없으면 자원 하나를 잃습니다. 잃을 자원이 없으면 기술 하나를 체크합니다. 둘 다 불가능하거나 잃으라고 한 기술이 하나도 없으면 최후를 서술합니다. 기억·등장인물·표식으로 대신할 수 없습니다. 잃은 특성은 취소선으로 남깁니다.'], ['06 / TIME & ENDINGS · PDF 19, 24, 29쪽', '끝은 사건이 정한다', '시간은 자유롭게 흐릅니다. 수십 년이 지났다면 필멸자의 자연사를 반영하세요. 그 밖의 살해는 사건의 지시가 있을 때 적용합니다. 정착 자원은 사건에서 떠나도록 지시받을 때 잃습니다. 72–80번 기본 사건은 결말이며, 69번 세 번째 문단은 선택 결말입니다. 대체 사건의 결말 조건은 해당 지시를 따릅니다.'], ['07 / ALTERNATIVES · 부록 I', '다른 운명으로 바꾸기', '부록의 대체 사건을 고르면 현재 번호에 연결해 보관합니다. 이후 같은 번호를 만나면 선택한 대체 사건의 다음 문단을 읽습니다. 추가 주사위·시간 역행·특별한 기억 칸 등 개별 사건의 예외는 사건 지시 도구에서 조정합니다.'], ['08 / YOUR PACE · 26쪽 및 부록', '당신에게 맞는 속도로', '빠른 게임은 경험만으로, 저널링 게임은 긴 기록과 경험을 함께 남깁니다. 두 방식 모두 기억이 우선합니다. 다루기 어려운 장면에서는 잠시 멈추거나 내용을 조정하세요. 다인 플레이·안전 도구·무작위 표는 소장 룰북을 함께 참고하세요.']];
+function App() {
+  const {
+    game,
+    setGame,
+    user,
+    status,
+    error,
+    dismissError,
+    conflict,
+    chooseSave,
+    login,
+    logout
+  } = useGameSave();
+  const [page, setPage] = useState<Page>('play');
+  const [setup, setSetup] = useState<Setup>(() => setupFromGame(game));
+  const [toast, setToast] = useState('');
+  const [confirmation, setConfirmation] = useState<Confirmation | null>(null);
+  const [editor, setEditor] = useState<Editor | null>(null);
+  const [memoryEditor, setMemoryEditor] = useState<{
+    memoryId: string;
+    experienceId: string;
+    text: string;
+    diaryId?: string;
+  } | null>(null);
+  const [journalEditor, setJournalEditor] = useState<{
+    id: string;
+    text: string;
+  } | null>(null);
+  const [journalText, setJournalText] = useState(() => readDraft('draft'));
+  const [experience, setExperience] = useState(() => readDraft('experience'));
+  const [memoryId, setMemoryId] = useState('');
+  const [instructionsDone, setInstructionsDone] = useState(false);
+  const [altModal, setAltModal] = useState(false);
+  const [altSelection, setAltSelection] = useState(1);
+  const [rolling, setRolling] = useState(false);
+  const [dice, setDice] = useState<[number, number] | null>(null);
+  const [targetPrompt, setTargetPrompt] = useState(1);
+  const [costMode, setCostMode] = useState<'check' | 'lose' | null>(null);
+  const [costSelection, setCostSelection] = useState('');
+  const [specialTool, setSpecialTool] = useState(false);
+  const [specialAction, setSpecialAction] = useState('capacity');
+  const [specialMemory, setSpecialMemory] = useState('m1');
+  const [specialTarget, setSpecialTarget] = useState('m2');
+  const [specialText, setSpecialText] = useState('');
+  const [specialNumber, setSpecialNumber] = useState(4);
+  const [seasonModal, setSeasonModal] = useState(false);
+  const [seasonTraits, setSeasonTraits] = useState({
+    mortals: '',
+    resources: '',
+    skills: ''
+  });
+  const importRef = useRef<HTMLInputElement>(null);
+  const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const latestGame = useRef(game);
+  latestGame.current = game;
+  const draftBinding = useRef(draftKey(game));
+  const started = !!game.setupComplete;
+  const prompt = rules.getCurrentPrompt(game);
+  const available = game.memories.filter(memory => memory.experiences.length < (memory.maxExperiences ?? 3));
+  const selectedMemory = available.some(memory => memory.id === memoryId) ? memoryId : available[0]?.id ?? '';
+  const experienceCount = game.experienceCount ?? (game.experienceRecorded ? 1 : 0);
+  const needsExperience = !game.experienceWaived && experienceCount < prompt.requiredExperiences;
+  const apply = (action: (state: GameState) => GameState, success?: string, allowEnded = false) => {
+    try {
+      if (latestGame.current.isGameOver && !allowEnded) throw new Error('끝난 이야기의 기록표는 보존됩니다. 최후의 이야기와 연대기는 수정할 수 있습니다.');
+      const next = action(latestGame.current);
+      latestGame.current = next;
+      setGame(next);
+      if (success) setToast(success);
+      return true;
+    } catch (cause) {
+      setToast(cause instanceof Error ? cause.message : '변경을 적용하지 못했습니다.');
+      return false;
+    }
+  };
+  useEffect(() => {
+    if (!toast) return;
+    const timeout = setTimeout(() => setToast(''), 5500);
+    return () => clearTimeout(timeout);
+  }, [toast]);
+  useEffect(() => () => clearTimeout(timer.current), []);
+  useEffect(() => {
+    try {
+      localStorage.setItem(`${SAVE_KEY}_draft`, journalText);
+      localStorage.setItem(`${SAVE_KEY}_experience`, experience);
+    } catch {/* Main save reports storage errors. */}
+  }, [journalText, experience]);
+  useEffect(() => {
+    if (!started) {
+      try {
+        localStorage.setItem(`${SAVE_KEY}_setup`, JSON.stringify(setup));
+      } catch {/* optional draft */}
+    }
+  }, [setup, started]);
+  useEffect(() => {
+    setInstructionsDone(false);
+  }, [game.currentPromptId, game.activeAltIdx, game.currentPromptResolved]);
+  useEffect(() => {
+    const binding = draftKey(game);
+    if (binding !== draftBinding.current) {
+      try {
+        if (journalText || experience) localStorage.setItem(`${SAVE_KEY}_previous_draft`, JSON.stringify({
+          context: draftBinding.current,
+          journalText,
+          experience
+        }));
+      } catch {/* optional recovery */}
+      draftBinding.current = binding;
+      setJournalText('');
+      setExperience('');
+      clearTimeout(timer.current);
+      setRolling(false);
+      setDice(null);
+    }
+  }, [game.characterName, game.currentPromptId, game.promptVisitHistory, game.activeAltIdx, journalText, experience, game]);
+  const updateSetup = <K extends keyof Setup,>(key: K, value: Setup[K]) => setSetup(previous => ({
+    ...previous,
+    [key]: value
+  }));
+  const start = (event: FormEvent) => {
+    event.preventDefault();
+    const candidate: GameState = {
+      ...rules.createInitialGameState(),
+      characterName: setup.name.trim(),
+      vampireOrigin: setup.origin.trim(),
+      playMode: setup.mode,
+      skills: lines(setup.skills).map(name => ({
+        id: uid(),
+        name,
+        isChecked: false
+      })),
+      resources: lines(setup.resources).map(line => ({
+        id: uid(),
+        name: line.replace(/^\[정착\]\s*/, ''),
+        isStationary: line.startsWith('[정착]')
+      })),
+      characters: [...lines(setup.mortals).map(name => ({
+        id: uid(),
+        name,
+        type: 'mortal' as const,
+        isAlive: true
+      })), ...(setup.immortal.trim() ? [{
+        id: uid(),
+        name: setup.immortal.trim(),
+        type: 'immortal' as const,
+        isAlive: true
+      }] : [])],
+      marks: setup.mark.trim() ? [{
+        id: uid(),
+        description: setup.mark.trim()
+      }] : [],
+      memories: setup.memories.map((text, index) => ({
+        id: `m${index + 1}`,
+        experiences: text.trim() ? [{
+          id: uid(),
+          text: text.trim()
+        }] : []
+      }))
+    };
+    try {
+      setGame(rules.startGame(candidate));
+      setPage('play');
+      setJournalText('');
+      setExperience('');
+      window.scrollTo({
+        top: 0
+      });
+    } catch (cause) {
+      setToast((cause as Error).message);
+    }
+  };
+  const recordExperience = () => {
+    if (apply(state => rules.addExperience(state, selectedMemory, experience), '한 문장의 경험을 기억에 새겼습니다.')) setExperience('');
+  };
+  const complete = (endOptional = false) => {
+    if (!instructionsDone) return setToast('사건의 지시를 기록표에 반영한 뒤 확인해 주세요.');
+    if (apply(state => {
+      let next = state;
+      if (needsExperience && experience.trim()) next = rules.addExperience(next, selectedMemory, experience);
+      return rules.completePrompt(next, journalText.trim(), endOptional);
+    }, '이번 밤의 기록을 남겼습니다.')) {
+      setJournalText('');
+      setExperience('');
+    }
+  };
+  const roll = () => {
+    if (rolling || !game.currentPromptResolved || game.isGameOver) return;
+    setRolling(true);
+    setDice([Math.floor(Math.random() * 10) + 1, Math.floor(Math.random() * 6) + 1]);
+    timer.current = setTimeout(() => {
+      const d10 = Math.floor(Math.random() * 10) + 1,
+        d6 = Math.floor(Math.random() * 6) + 1;
+      setDice([d10, d6]);
+      setRolling(false);
+      apply(state => rules.rollMovement(state, d10, d6));
+    }, 420);
+  };
+  const exportSave = () => {
+    const url = URL.createObjectURL(new Blob([JSON.stringify({
+      ...game,
+      draft: journalText,
+      experienceDraft: experience,
+      exportedAt: new Date().toISOString()
+    }, null, 2)], {
+      type: 'application/json'
+    }));
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = `vampire-${game.characterName || 'chronicle'}.json`;
+    anchor.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    setToast('기록을 파일로 내보냈습니다.');
+  };
+  const stopRoll = () => { clearTimeout(timer.current); setRolling(false); setDice(null); };
+  const backup = () => {
+    try {
+      localStorage.setItem(`${SAVE_KEY}_backup`, JSON.stringify(game));
+    } catch {/* export remains available */}
+  };
+  const importSave = async (file: File) => {
+    try {
+      if (file.size > 8 * 1024 * 1024) throw new Error('8MB 이하의 기록 파일을 선택해 주세요.');
+      const input = JSON.parse(await file.text());
+      if (!input || !Array.isArray(input.memories) || typeof input.currentPromptId !== 'number' || typeof input.characterName !== 'string') throw new Error('흡혈귀 기록 파일 형식이 아닙니다.');
+      const imported = rules.normalizeGameState(input);
+      setConfirmation({
+        title: '파일의 기록을 불러올까요?',
+        text: `현재 기록을 ‘${imported.characterName || '이름 없는 흡혈귀'}’의 기록으로 바꿉니다. 현재 기록은 기기 복구본에 보관합니다.`,
+        action: () => {
+          backup();
+          stopRoll();
+          draftBinding.current = draftKey(imported);
+          setGame(imported);
+          setSetup(setupFromGame(imported));
+          setJournalText(typeof input.draft === 'string' ? input.draft : '');
+          setExperience(typeof input.experienceDraft === 'string' ? input.experienceDraft : '');
+          setPage('play');
+        }
+      });
+    } catch (cause) {
+      setToast((cause as Error).message);
+    }
+  };
+  const saveEntity = (event: FormEvent) => {
+    event.preventDefault();
+    if (!editor?.text.trim()) return;
+    const {
+      kind,
+      id,
+      text,
+      stationary,
+      immortal
+    } = editor;
+    apply(state => {
+      const itemId = id ?? uid();
+      if (kind === 'skills') return {
+        ...state,
+        skills: id ? state.skills.map(item => item.id === id ? {
+          ...item,
+          name: text.trim()
+        } : item) : [...state.skills, {
+          id: itemId,
+          name: text.trim(),
+          isChecked: false
+        }]
+      };
+      if (kind === 'resources') return {
+        ...state,
+        resources: id ? state.resources.map(item => item.id === id ? {
+          ...item,
+          name: text.trim(),
+          isStationary: stationary
+        } : item) : [...state.resources, {
+          id: itemId,
+          name: text.trim(),
+          isStationary: stationary
+        }]
+      };
+      if (kind === 'characters') return {
+        ...state,
+        characters: id ? state.characters.map(item => item.id === id ? {
+          ...item,
+          name: text.trim(),
+          type: immortal ? 'immortal' : 'mortal'
+        } : item) : [...state.characters, {
+          id: itemId,
+          name: text.trim(),
+          type: immortal ? 'immortal' : 'mortal',
+          isAlive: true
+        }]
+      };
+      return {
+        ...state,
+        marks: id ? state.marks.map(item => item.id === id ? {
+          ...item,
+          description: text.trim()
+        } : item) : [...state.marks, {
+          id: itemId,
+          description: text.trim()
+        }]
+      };
+    }, '기록표를 갱신했습니다.');
+    setEditor(null);
+  };
+  const confirm = (title: string, text: string, action: () => void) => setConfirmation({
+    title,
+    text,
+    action
+  });
+  const memoryCard = (memory: Memory, index: number, compact = false) => <article className={`memory-card ${!memory.experiences.length ? 'empty' : ''}`} key={memory.id}>
+    <div className="memory-card-header"><span className="memory-index">{String(index + 1).padStart(2, '0')} <span>{memory.label || '기억'}</span></span><span className="memory-capacity" aria-label={`경험 ${memory.experiences.length}개, 최대 ${memory.maxExperiences ?? 3}개`}>{Array.from({
+          length: memory.maxExperiences ?? 3
+        }, (_, dot) => <i key={dot} className={dot < memory.experiences.length ? 'filled' : ''} />)}</span></div>
+    {memory.experiences.length ? <ol className="experience-list">{memory.experiences.map(item => <li className="experience-item" key={item.id}><p className="experience-text">{item.text}</p>{!compact && game.promptEditEnabled && <button className="icon-button" aria-label="사건 지시에 따라 경험 수정" onClick={() => setMemoryEditor({
+          memoryId: memory.id,
+          experienceId: item.id,
+          text: item.text
+        })}><Feather size={14} /></button>}</li>)}</ol> : <p className="field-hint">새로운 경험을 담을 빈자리.</p>}
+    {!!memory.experiences.length && !memory.isPermanent && <div className="item-actions"><button className="button-ghost" onClick={() => apply(state => rules.archiveMemory(state, memory.id), '기억을 일기장으로 옮겼습니다.')}><BookOpen size={13} />일기장에 옮기기</button><button className="button-ghost" onClick={() => confirm('이 기억을 잊을까요?', '이 칸의 모든 경험을 함께 잊습니다. 잊은 기록은 보관되며 사건의 지시가 있을 때만 되찾을 수 있습니다.', () => apply(state => rules.forgetMemory(state, memory.id)))}>잊기 <X size={12} /></button></div>}
+  </article>;
+  const counts = {
+    memories: game.memories.filter(memory => memory.experiences.length).length,
+    skills: game.skills.filter(item => !item.isLost).length,
+    resources: game.resources.filter(item => !item.isLost).length,
+    characters: game.characters.filter(item => item.isAlive).length,
+    marks: game.marks.filter(item => !item.isLost).length,
+    diary: game.diary.filter(item => !item.isLost).length,
+    journal: game.journal.length
+  };
+  const primaryDiaryCount = game.diary.filter(item => !item.isLost && item.resourceId === game.diaryResourceId).length;
+  const uncheckedSkills = game.skills.filter(item => !item.isLost && !item.isChecked);
+  const liveResources = game.resources.filter(item => !item.isLost);
+  const costUsesSkill = costMode === 'check' ? !!uncheckedSkills.length : !liveResources.length;
+  const costChoices = costUsesSkill ? uncheckedSkills : liveResources;
+  const selectedCost = costChoices.some(item => item.id === costSelection) ? costSelection : costChoices[0]?.id;
+  const payCost = () => {
+    if (apply(state => costMode === 'check' ? rules.checkSkill(state, costUsesSkill ? selectedCost : undefined, costUsesSkill ? undefined : selectedCost) : rules.loseResource(state, costUsesSkill ? undefined : selectedCost, costUsesSkill ? selectedCost : undefined), '사건의 비용을 반영했습니다.')) setCostMode(null);
+  };
+  const applySpecial = () => {
+    if (apply(state => {
+      switch (specialAction) {
+        case 'capacity':
+          return rules.setMemoryCapacity(state, specialMemory, specialNumber);
+        case 'label':
+          return rules.setMemoryLabel(state, specialMemory, specialText);
+        case 'diary':
+          return rules.setDiaryCapacity(state, specialNumber);
+        case 'extra':
+          return rules.createExtraDiaryMemory(state, specialText);
+        case 'directDiary':
+          return rules.addDiaryMemory(state, specialText);
+        case 'merge':
+          return rules.mergeMemories(state, specialMemory, specialTarget);
+        default:
+          throw new Error('적용할 사건 지시를 선택해 주세요.');
+      }
+    }, '사건의 특별한 지시를 반영했습니다.')) setSpecialTool(false);
+  };
+  const heading = started || page === 'rules' ? titles[page] : ['BEFORE THE FIRST NIGHT', '영원히 남을 이야기는 없다', '한때 인간이었던 당신. 그 시작을 기록하세요.'];
+  const newEntity = (kind: Entity) => setEditor({
+    kind,
+    text: '',
+    stationary: false,
+    immortal: false
+  });
+  const editEntity = (kind: Entity, id: string, text: string, stationary = false, immortal = false) => setEditor({
+    kind,
+    id,
+    text,
+    stationary,
+    immortal
+  });
+  const editButton = (kind: Entity, id: string, text: string, stationary = false, immortal = false) => <button className="icon-button" aria-label={`${text} 수정`} onClick={() => editEntity(kind, id, text, stationary, immortal)}><Feather size={15} /></button>;
+  const shownMode = game.lastRoll?.mode ?? 'normal';
+  const diceOrder = shownMode === 'reverse' ? [1, 0] : shownMode === 'backward' ? [1] : [0, 1];
+  const equation = shownMode === 'reverse' ? 'D6 − D10' : shownMode === 'backward' ? '−D6' : shownMode === 'sum' ? 'D10 + D6' : 'D10 − D6';
+  const diceDisplay = <>{shownMode === 'backward' && <span className="dice-equation">−</span>}{diceOrder.map((index, position) => <span className="dice-pair" key={index}>{position > 0 && <span className="dice-equation">{shownMode === 'sum' ? '+' : '−'}</span>}<span className={`die ${rolling ? 'rolling' : ''}`}><span className="die-label">{index ? 'D6' : 'D10'}</span><strong className="die-value">{dice?.[index] ?? (index ? game.lastRoll?.d6 : game.lastRoll?.d10) ?? '—'}</strong></span></span>)}</>;
+  const renderRules = () => <div className="panel prose"><div className="panel-header"><span className="panel-kicker">THE RULES, AT A GLANCE</span><BookOpen size={20} /></div><div className="panel-body"><h2>기억은 한정되어 있고, 밤은 길다.</h2><p>Tim Hutchings의 <em>Thousand Year Old Vampire</em>를 위한 개인 기록 도구입니다. 사건의 이야기와 선택은 플레이어가 해석하고, 지시받은 특성 변화는 기록표에 직접 반영합니다. 기본 규칙보다 개별 사건의 지시가 우선합니다.</p><div className="rules-list">{ruleNotes.map(([meta, title, text]) => <article key={meta}><span className="eyebrow">{meta}</span><h3>{title}</h3><p>{text}</p></article>)}</div></div></div>;
+  const renderPlay = () => <div className="two-column"><div className="reading-panel"><section className="panel prompt-panel"><div className="panel-header"><span className="panel-kicker">{prompt.isAlternate ? `ALTERNATE ${prompt.alternateId}` : 'THE PROMPT'}</span><span className="badge">{prompt.visit}번째 방문</span></div><div className="panel-body"><div className="prompt-meta"><span className="prompt-number">{String(prompt.id).padStart(2, '0')}</span><div><span className="eyebrow">CHAPTER OF YOUR UNLIFE</span><p>{prompt.isAlternate ? '또 다른 운명의 갈래' : '오늘 밤 당신을 기다리는 사건'}</p></div></div><p className="prompt-text">{prompt.text}</p><div className="prompt-actions"><span className="field-hint">PDF {prompt.page}쪽 · {prompt.entry}번째 문단</span><button className="button-ghost" onClick={() => setAltModal(true)} disabled={game.currentPromptResolved || game.experienceRecorded || game.isGameOver}>다른 사건으로 대체 <ArrowRight size={13} /></button></div>{prompt.ending && <div className="notice warning">{prompt.ending === 'optional' ? '본문의 종료 조건이 충족되었거나 선택 결말을 택했다면 이야기 끝내기를 선택하세요.' : '이 사건을 해결하면 당신의 이야기가 끝납니다.'}</div>}</div></section>
+        <section className="panel journal-editor"><div className="panel-header"><h2 className="panel-title">이번 밤을 기록하다</h2><Feather size={18} /></div><div className="panel-body">{game.currentPromptResolved ? <div className="resolved-state"><Check size={24} /><h3>{game.isGameOver ? '마지막 기록을 남겼습니다.' : '한 장의 이야기를 남겼습니다.'}</h3><p className="field-hint">{game.isGameOver ? '기억과 연대기에서 지나온 밤들을 돌아보세요.' : '주사위를 굴려 다음 사건을 만나세요.'}</p></div> : <>{game.playMode === 'journal' && <Field label="어떤 일이 있었나요?" hint="모든 질문에 답할 필요는 없습니다."><textarea className="textarea journal-textarea" rows={5} value={journalText} onChange={event => setJournalText(event.target.value)} placeholder="오늘 밤, 나는…" disabled={game.isGameOver} /></Field>}<Field label={`기억에 남길 한 문장 · ${experienceCount}/${game.experienceWaived ? 0 : prompt.requiredExperiences}`} hint="무슨 일이 있었고 어떤 의미였는지. 1인칭으로."><textarea className="textarea" rows={3} value={experience} onChange={event => setExperience(event.target.value)} placeholder="나는 …했다; 그래서 …을 느꼈다." disabled={!needsExperience || game.isGameOver} /></Field>{needsExperience && <><Field label="어느 기억에 담을까요?"><select className="select" value={selectedMemory} onChange={event => setMemoryId(event.target.value)} disabled={game.isGameOver}>{!available.length && <option value="">빈자리가 없습니다. 기억을 잊거나 일기장으로 옮겨 주세요.</option>}{available.map(memory => <option key={memory.id} value={memory.id}>기억 {game.memories.indexOf(memory) + 1} · {memory.experiences.length}/{memory.maxExperiences ?? 3} · {memory.experiences[0]?.text.slice(0, 28) || '아직 쓰이지 않은 기억'}</option>)}</select></Field><button className="button-secondary" onClick={recordExperience} disabled={!experience.trim() || !selectedMemory || game.isGameOver}>경험 먼저 새기기 <Feather size={14} /></button></>}{!needsExperience && <p className="notice success"><Check size={15} />{game.experienceWaived ? '이 사건은 새 경험을 요구하지 않습니다.' : '이번 사건의 경험이 기억에 담겼습니다.'}</p>}<label className="checkbox-row"><input type="checkbox" checked={!!game.experienceWaived} onChange={event => apply(state => rules.setExperienceWaived(state, event.target.checked))} disabled={game.isGameOver} /><span>사건에 새 경험을 만들지 말라는 별도 지시가 있습니다.</span></label><label className="checkbox-row"><input type="checkbox" checked={instructionsDone} onChange={event => setInstructionsDone(event.target.checked)} disabled={game.isGameOver} /><span>사건이 지시한 모든 변화(기억·기술·자원·등장인물·표식)를 반영했습니다.</span></label><div className="form-row"><button className="button-primary" onClick={() => complete()} disabled={game.isGameOver || !instructionsDone}>이번 사건 마치기 <Check size={16} /></button>{prompt.ending === 'optional' && <button className="button-secondary" onClick={() => complete(true)} disabled={!instructionsDone || game.isGameOver}>이야기 끝내기</button>}</div></>}</div></section>
+        <section className="panel dice-panel"><div className="panel-header"><h2 className="panel-title">운명의 다음 장</h2><span className="panel-kicker">{equation}</span></div><div className="panel-body"><div className="dice-row">{diceDisplay}<span className="dice-equation">=</span><div className="roll-result">{rolling ? '…' : game.lastRoll ? `${game.lastRoll.offset > 0 ? '+' : ''}${game.lastRoll.offset}` : '?'}</div><button className="button-primary" onClick={roll} disabled={!game.currentPromptResolved || rolling || game.isGameOver}>{rolling ? '밤이 흐릅니다…' : '주사위 굴리기'}<ArrowRight size={16} /></button></div><p className="field-hint">{!game.currentPromptResolved ? '경험을 기록하고 사건을 마친 뒤 이동할 수 있습니다.' : game.lastRoll?.skipped.length ? `이미 끝낸 번호 ${game.lastRoll.skipped.join(', ')}을 건너뛰었습니다.` : '양수는 앞으로, 음수는 뒤로. 0이면 같은 사건을 다시 만납니다.'}</p></div></section>
+        <details className="panel instruction-tools"><summary><Settings2 size={16} />사건의 특별한 지시 적용</summary><div className="panel-body"><p className="field-hint">현재 사건이 지시한 예외만 적용하세요. 기본 규칙보다 사건의 지시가 우선합니다.</p><label className="checkbox-row"><input type="checkbox" checked={!!game.promptEditEnabled} onChange={event => apply(state => ({
+              ...state,
+              promptEditEnabled: event.target.checked
+            }))} /><span>이 사건이 기억 수정·복구 또는 특성 복원을 지시합니다.</span></label><div className="form-row"><input aria-label="지시받은 사건 번호" className="input" type="number" min="1" max="80" value={targetPrompt} onChange={event => setTargetPrompt(Number(event.target.value))} /><button className="button-secondary" onClick={() => confirm(`${targetPrompt}번으로 이동할까요?`, '사건에서 직접 이동을 지시한 경우에 사용하세요. 작성 중인 내용을 먼저 기록해 두세요.', () => apply(state => rules.resolvePrompt(state, targetPrompt)))}>지시 번호로 이동</button></div><label className="checkbox-row"><input type="checkbox" checked={game.persistentRollMode === 'reverse'} onChange={event => apply(state => ({
+              ...state,
+              persistentRollMode: event.target.checked ? 'reverse' : 'normal'
+            }))} /><span>표식을 지울 때까지 계속 d6 − d10으로 이동합니다.</span></label><button className="button-secondary" onClick={() => setSpecialTool(true)}>기억 용량·병합·별도 일기 지시</button><Field label="다음 이동의 특별한 주사위 지시"><select className="select" value={game.nextRollMode ?? 'normal'} onChange={event => apply(state => ({
+              ...state,
+              nextRollMode: event.target.value as GameState['nextRollMode']
+            }))}><option value="normal">기본 · d10 − d6</option><option value="reverse">역행 · d6 − d10</option><option value="backward">d6만큼 뒤로</option><option value="sum">d10 + d6</option></select></Field><div className="form-row"><button className="button-secondary" onClick={() => confirm('모든 필멸자의 세대를 보낼까요?', '시간이 흐르라는 사건 지시를 적용해 모든 필멸자를 죽음으로 표시합니다.', () => apply(state => rules.ageMortals(state)))}>필멸자의 세대 보내기</button><button className="button-secondary" onClick={() => confirm('정착 자원을 모두 잃을까요?', '떠나거나 도망치라는 사건의 지시를 적용합니다.', () => apply(state => rules.travel(state)))}>떠나며 정착 자원 잃기</button><button className="button-secondary" onClick={() => apply(state => rules.addMemorySlot(state))}>기억 칸 추가</button></div><button className="button-ghost" onClick={() => confirm('이 사건의 조건으로 끝낼까요?', '특별한 주사위 판정이나 선택의 결과로 게임이 끝나는 경우에 사용하세요.', () => apply(state => rules.endGame(state, journalText.trim() || '사건의 특별한 조건에 따라 이야기를 마쳤습니다.')))}>조건부 결말 적용</button></div></details>
+      </div><aside className="sheet-panel"><div className="sheet-heading"><div><p className="eyebrow">IN YOUR MIND</p><h2>지금의 기억</h2></div><button className="icon-button" onClick={() => setPage('memories')} aria-label="모든 기억 관리"><ArrowRight size={18} /></button></div><p className="field-hint sheet-description">경험의 주제가 이어진다면 같은 기억에.<br />다른 이야기라면 새로운 자리에.</p>{game.memories.map((memory, index) => memoryCard(memory, index, true))}<div className="quiet-note"><BookOpen size={18} /><p>잊고 싶지 않은 기억은 일기장에.<br /><span>{primaryDiaryCount} / {game.diaryCapacity ?? 4} 기억 보관 중</span></p><button className="icon-button" onClick={() => setPage('diary')} aria-label="일기장 열기"><ArrowRight size={16} /></button></div></aside></div>;
+  const renderEntities = () => <section className="panel"><div className="panel-header"><h2 className="panel-title">{titles[page][1]}</h2><button className="button-primary" onClick={() => newEntity(page as Entity)}><Plus size={16} />추가하기</button></div><div className="panel-body">{page === 'skills' && <div className="notice"><Sword size={17} /><span>체크할 기술이 없으면 자원을 잃고, 둘 다 없으면 끝납니다.</span><button className="button-secondary" onClick={() => {
+          setCostSelection('');
+          setCostMode('check');
+        }}>기술 체크 비용 지불</button></div>}{page === 'resources' && <div className="notice"><Gem size={17} /><span>잃을 자원이 없으면 기술을 체크합니다.</span><button className="button-secondary" onClick={() => {
+          setCostSelection('');
+          setCostMode('lose');
+        }}>자원 손실 비용 지불</button></div>}<div className="entity-list">
+      {page === 'skills' && game.skills.map(item => <article className={`entity-card ${item.isLost ? 'lost' : item.isChecked ? 'checked' : ''}`} key={item.id}><div><p className="entity-title">{item.name}</p><span className="badge">{item.isLost ? '잃은 기술' : item.isChecked ? '체크함 · 사용한 기술' : '체크 가능'}</span></div><div className="item-actions">{!item.isLost && !item.isChecked && <button className="button-secondary" onClick={() => apply(state => rules.checkSkill(state, item.id))}><Check size={14} />체크</button>}{!item.isLost && <button className="button-ghost" onClick={() => apply(state => rules.loseSkill(state, item.id))}>잃기</button>}{game.promptEditEnabled && (item.isLost ? <button className="button-ghost" onClick={() => apply(state => rules.restoreSkill(state, item.id))}>복구</button> : item.isChecked && <button className="button-ghost" onClick={() => apply(state => rules.uncheckSkill(state, item.id))}>체크 해제</button>)}{editButton('skills', item.id, item.name)}</div></article>)}
+      {page === 'resources' && game.resources.map(item => <article className={`entity-card ${item.isLost ? 'lost' : ''}`} key={item.id}><div><p className="entity-title">{item.name}</p><div className="entity-badges"><span className="badge">{item.isStationary ? '정착 자원' : '이동 자원'}</span>{item.isDiary && <span className="badge">일기장</span>}{item.isLost && <span className="badge">잃어버림</span>}</div></div><div className="item-actions">{item.isLost ? <button className="button-ghost" onClick={() => apply(state => rules.restoreResource(state, item.id))}>지시에 따라 되찾기</button> : <button className="button-secondary" onClick={() => confirm('이 자원을 잃을까요?', item.isDiary ? '일기장에 보관한 모든 기억도 함께 잃습니다.' : item.name, () => apply(state => rules.loseResource(state, item.id)))}>잃기</button>}{editButton('resources', item.id, item.name, item.isStationary)}</div></article>)}
+      {page === 'characters' && game.characters.map(item => <article className={`entity-card ${!item.isAlive ? 'lost' : ''}`} key={item.id}><div><p className="entity-title">{item.name}</p><div className="entity-badges"><span className="badge">{item.type === 'mortal' ? '필멸자' : '불멸자'}</span>{!item.isAlive && <span className="badge">죽음</span>}{item.isAgeless && <span className="badge">노화 면역</span>}</div></div><div className="item-actions"><button className="button-secondary" onClick={() => apply(state => ({
+              ...state,
+              characters: state.characters.map(character => character.id === item.id ? {
+                ...character,
+                isAlive: !character.isAlive
+              } : character)
+            }))}>{item.isAlive ? '죽음 표시' : '지시에 따라 되돌리기'}</button>{game.promptEditEnabled && item.type === 'mortal' && <button className="button-ghost" onClick={() => apply(state => rules.setCharacterAgeless(state, item.id, !item.isAgeless))}>{item.isAgeless ? '노화 면역 해제' : '지시에 따라 노화 면역'}</button>}{editButton('characters', item.id, item.name, false, item.type === 'immortal')}</div></article>)}
+      {page === 'marks' && game.marks.map(item => <article className={`entity-card ${item.isLost ? 'lost' : ''}`} key={item.id}><div><p className="entity-title">{item.description}</p><span className="badge">{item.isLost ? '지워진 표식' : '불멸의 표식'}</span></div><div className="item-actions"><button className="button-secondary" onClick={() => apply(state => item.isLost ? rules.restoreMark(state, item.id) : rules.loseMark(state, item.id))}>{item.isLost ? '지시에 따라 복구' : '지시에 따라 잃기'}</button>{editButton('marks', item.id, item.description)}</div></article>)}
+      {!(game[page as Entity] as unknown[]).length && <div className="empty-state"><Sparkles size={26} /><h3>아직 기록된 것이 없습니다.</h3><p>사건에서 지시할 때 새로운 항목을 더해 주세요.</p></div>}</div></div></section>;
+  const renderDiary = () => <section className="panel"><div className="panel-header"><h2 className="panel-title">기억을 맡긴 물건</h2><span className="badge">{primaryDiaryCount} / {game.diaryCapacity ?? 4} 기억 · 별도 책 {counts.diary - primaryDiaryCount}개</span></div><div className="panel-body"><div className="notice"><BookOpen size={18} /><span>기억을 옮길 때 일기장 자원이 만들어집니다. 옮긴 기억에는 새 경험을 더할 수 없습니다.</span></div>{!game.diary.length && <div className="empty-state"><BookOpen size={32} /><h3>아직 쓰이지 않은 책</h3><p>기억 화면에서 기억 전체를 이곳으로 옮겨 보세요.</p><button className="button-secondary" onClick={() => setPage('memories')}>기억 살펴보기 <ArrowRight size={15} /></button></div>}<div className="memory-grid">{game.diary.map((entry, index) => <article className={`memory-card ${entry.isLost ? 'lost' : ''}`} key={entry.id}><div className="memory-card-header"><span className="memory-index">{String(index + 1).padStart(2, '0')} <span>{entry.isLost ? '잃은 일기' : '기록된 기억'}</span></span><BookOpen size={16} /></div><ol className="experience-list">{entry.experiences.map(item => <li className="experience-item" key={item.id}><p className="experience-text">{item.text}</p>{!entry.isLost && game.promptEditEnabled && <button className="icon-button" aria-label="사건 지시에 따라 일기 경험 수정" onClick={() => setMemoryEditor({
+                diaryId: entry.id,
+                memoryId: '',
+                experienceId: item.id,
+                text: item.text
+              })}><Feather size={14} /></button>}</li>)}</ol>{entry.isLost && !entry.isForgotten && !entry.recoveredToId && game.promptEditEnabled && <button className="button-secondary" onClick={() => apply(state => rules.recoverLostDiaryMemory(state, entry.id))}>지시에 따라 이 페이지를 현재 일기장에 복구</button>}{!entry.isLost && <div className="item-actions"><button className="button-ghost" onClick={() => confirm('일기의 이 기억을 잊을까요?', '이 기억의 모든 경험이 함께 지워집니다.', () => apply(state => rules.forgetDiaryMemory(state, entry.id)))}>기록 전체 잃기</button>{game.promptEditEnabled && <button className="button-ghost" onClick={() => apply(state => rules.preserveDiaryMemory(state, entry.id))}>영구 기억으로 출판</button>}{game.promptEditEnabled && <button className="button-ghost" onClick={() => {
+              const slot = game.memories.find(item => !item.experiences.length);
+              if (!slot) return setToast('먼저 빈 기억 칸을 마련해 주세요.');
+              apply(state => rules.restoreDiaryMemory(state, entry.id, slot.id));
+            }}>지시에 따라 복구</button>}</div>}</article>)}</div>{primaryDiaryCount > 0 && <button className="button-danger" onClick={() => confirm('일기장 전체를 잃을까요?', '일기장 자원과 그 안의 모든 기억을 함께 잃습니다.', () => apply(state => rules.loseDiary(state)))}><Trash2 size={15} />일기장 잃기</button>}</div></section>;
+  const renderJournal = () => <section className="panel"><div className="panel-header"><h2 className="panel-title">지나온 밤의 순서</h2><button className="button-secondary" onClick={exportSave}><ArrowDownToLine size={15} />기록 보관</button></div><div className="panel-body">{!game.journal.length && <div className="empty-state"><ScrollText size={30} /><h3>첫 문장은 아직 쓰이지 않았습니다.</h3><p>사건을 마칠 때마다 이곳에 기록이 쌓입니다.</p></div>}<div className="timeline">{[...game.journal].reverse().map(entry => <article className="timeline-entry" key={entry.id}><div className="timeline-meta"><span>사건 {String(entry.promptId).padStart(2, '0')} · {entry.visitCount}번째 방문</span><span>{entry.dateString}</span><button className="icon-button" aria-label="연대기 기록 수정" onClick={() => setJournalEditor({
+              id: entry.id,
+              text: entry.textContent
+            })}><Feather size={14} /></button></div><p className="timeline-content">{entry.textContent}</p>{entry.rollText && <p className="field-hint">{entry.rollText}</p>}</article>)}</div></div></section>;
+  const renderSetup = () => <form className="setup-layout" onSubmit={start}><section className="setup-intro"><span className="eyebrow">EVERY IMMORTAL WAS HUMAN ONCE</span><h2>무엇을 잊게 될지,<br />아직은 모른다.</h2><div className="cover-art" aria-hidden="true"><div className="orbit" /><div className="orbit-inner" /><div className="eclipsed-moon" /></div><p>다섯 개의 기억으로 시작해<br />수백 년의 어둠을 건너는<br />당신만의 흡혈귀 연대기.</p><div className="checklist">{[[!!setup.name.trim(), '한때 인간이었던 이름'], [lines(setup.skills).length === 3 && lines(setup.resources).length === 3, '기술 셋과 자원 셋'], [lines(setup.mortals).length >= 3 && !!setup.immortal.trim() && !!setup.mark.trim(), '사람들, 창조자, 그리고 표식'], [setup.memories.filter(text => text.trim()).length === 5, '다섯 기억에 경험 하나씩']].map(([done, label], index) => <div className={`checklist-item ${done ? 'complete' : ''}`} key={index}>{done ? <Check size={14} /> : <span className="checklist-circle" />}<span>{label}</span></div>)}</div><button className="button-ghost" type="button" onClick={() => {
+        if (setup.name || setup.origin || setup.skills || setup.resources || setup.memories.some(Boolean)) confirm('예시 인물을 불러올까요?', '작성 중인 시작 정보를 예시 인물 ‘서윤’으로 바꿉니다.', () => setSetup(sample));else setSetup(sample);
+      }}>예시 인물로 채워 보기 <ArrowRight size={15} /></button></section>
+        <section className="setup-form"><div className="setup-step"><span className="step-number">01</span><div><h3>당신은 누구였나요?</h3><p className="field-hint">시대와 장소, 인간 시절의 삶을 떠올려 보세요.</p></div></div><Field label="이름"><input className="input" value={setup.name} onChange={event => updateSetup('name', event.target.value)} placeholder="영원한 밤에 남길 이름" required /></Field><Field label="시대와 기원"><textarea className="textarea" rows={2} value={setup.origin} onChange={event => updateSetup('origin', event.target.value)} placeholder="언제, 어디서, 어떤 삶을 살았나요?" required /></Field>
+        <div className="setup-step"><span className="step-number">02</span><div><h3>당신의 세계를 이루던 것들</h3><p className="field-hint">한 줄에 하나씩. 이름 뒤에 짧은 설명을 붙여도 좋습니다.</p></div></div><div className="form-grid"><Field label={`기술 · ${lines(setup.skills).length}/3`} hint="인간 시절에 어울리는 기술 세 가지"><textarea className="textarea" rows={3} value={setup.skills} onChange={event => updateSetup('skills', event.target.value)} placeholder={'고문서 해독\n약초 다루기\n상인의 흥정'} required /></Field><Field label={`자원 · ${lines(setup.resources).length}/3`} hint="움직일 수 없다면 [정착]으로 시작하세요."><textarea className="textarea" rows={3} value={setup.resources} onChange={event => updateSetup('resources', event.target.value)} placeholder={'은반지\n[정착] 강가의 집\n편지를 전하는 말'} required /></Field></div><Field label={`필멸자 · ${lines(setup.mortals).length}명`} hint="최소 세 명. 각자 당신과 어떤 관계인가요?"><textarea className="textarea" rows={3} value={setup.mortals} onChange={event => updateSetup('mortals', event.target.value)} placeholder={'연화: 나를 믿는 누이\n도겸: 나의 스승\n우진: 오래된 친구'} required /></Field><div className="form-grid"><Field label="당신을 바꾼 불멸자"><input className="input" value={setup.immortal} onChange={event => updateSetup('immortal', event.target.value)} placeholder="누가 불멸을 주었나요?" required /></Field><Field label="표식 하나"><input className="input" value={setup.mark} onChange={event => updateSetup('mark', event.target.value)} placeholder="무엇을 어떻게 감추나요?" required /></Field></div>
+        <div className="setup-step"><span className="step-number">03</span><div><h3>다섯 개의 처음</h3><p className="field-hint">각각 별개의 기억이 됩니다. 경험마다 한 문장을 쓰세요.</p></div></div>{setup.memories.map((text, index) => <Field key={index} label={`${String(index + 1).padStart(2, '0')} · ${index === 0 ? '인간 시절의 삶' : index === 4 ? '흡혈귀가 된 순간' : '특성 두 가지를 잇는 사건'}`}><textarea className="textarea" rows={2} value={text} onChange={event => updateSetup('memories', setup.memories.map((value, position) => position === index ? event.target.value : value))} placeholder={index === 0 ? '나는 …이었다; 나에게는 …이 중요했다.' : index === 4 ? '그날 …이 나를 바꾸었다; 이후 나는 ….' : '사람과 물건, 기술과 사건을 하나의 경험으로 엮어 보세요.'} required /></Field>)}<Field label="기록 방식"><select className="select" value={setup.mode} onChange={event => updateSetup('mode', event.target.value as Setup['mode'])}><option value="journal">저널링 · 긴 이야기와 한 문장의 경험</option><option value="quick">빠른 게임 · 한 문장의 경험으로</option></select></Field><button className="button-primary setup-submit" type="submit">첫 번째 밤으로 <ArrowRight size={18} /></button><p className="field-hint">작성 내용은 이 기기에 자동 저장됩니다.</p></section></form>;
+  const renderConfirmation = (confirmation: Confirmation) => <Modal title={confirmation.title} close={() => setConfirmation(null)} footer={<><button className="button-secondary" onClick={() => setConfirmation(null)}>취소</button><button className="button-primary" onClick={() => {
+      confirmation.action();
+      setConfirmation(null);
+    }}>적용하기 <ArrowRight size={15} /></button></>}><p>{confirmation.text}</p></Modal>;
+  const renderCost = () => <Modal title="사건의 비용 지불" close={() => setCostMode(null)}>
+      <p>{!costChoices.length ? '체크할 기술도 잃을 자원도 없습니다. 이 사건을 바탕으로 최후를 기록해야 합니다.' : costUsesSkill ? '직접 체크할 기술을 선택하세요.' : '직접 잃을 자원을 선택하세요. 일기장을 고르면 그 안의 기억도 함께 잃습니다.'}</p>
+      {costChoices.length > 0 && <Field label={costUsesSkill ? '체크할 기술' : '잃을 자원'}><select className="select" value={selectedCost} onChange={event => setCostSelection(event.target.value)}>{costChoices.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}</select></Field>}
+      {(costMode === 'check' ? !uncheckedSkills.length : !liveResources.length) && !!costChoices.length && <div className="notice warning">원래 비용을 지불할 수 없어 대체 비용을 냅니다. 가장 좋지 않은 결과로 서술하세요.</div>}
+      <div className="modal-footer"><button className="button-secondary" onClick={() => setCostMode(null)}>취소</button><button className="button-primary" onClick={payCost}>{costChoices.length ? '선택한 비용 적용' : '최후를 맞이하기'}</button></div>
+    </Modal>;
+  const renderSeason = () => <Modal title="다음 천 년의 첫 장" close={() => setSeasonModal(false)}>
+      <p>평화의 결말이 주는 필멸자 둘, 자원 둘, 기술 둘을 적으세요. 기억 칸 셋을 더하고, 이전 방문 기록을 간직한 채 사건 0에서 다음 주사위를 굴립니다.</p>
+      {(['mortals', 'resources', 'skills'] as const).map(kind => <Field key={kind} label={`${{
+      mortals: '필멸자',
+      resources: '자원',
+      skills: '기술'
+    }[kind]} · 두 줄로 작성`}><textarea className="textarea" rows={3} value={seasonTraits[kind]} onChange={event => setSeasonTraits(previous => ({
+        ...previous,
+        [kind]: event.target.value
+      }))} /></Field>)}
+      <div className="modal-footer"><button className="button-secondary" onClick={() => setSeasonModal(false)}>아직 이 평화에 머무르기</button><button className="button-primary" onClick={() => {
+        if (apply(state => rules.startNextSeason(state, {
+          mortals: lines(seasonTraits.mortals),
+          resources: lines(seasonTraits.resources),
+          skills: lines(seasonTraits.skills)
+        }), '다음 시즌의 첫 장을 열었습니다.', true)) {
+          setSeasonModal(false);
+          setPage('play');
+          setJournalText('');
+          setExperience('');
+        }
+      }}>다음 시즌 시작 <ArrowRight size={15} /></button></div>
+    </Modal>;
+  const renderSpecial = () => <Modal title="사건의 예외를 기록표에 적용" close={() => setSpecialTool(false)}>
+      <p className="field-hint">사건 지시에 따른 수정 모드를 켜고, 현재 사건이 허용한 변화만 적용하세요.</p>
+      <Field label="적용할 지시"><select className="select" value={specialAction} onChange={event => setSpecialAction(event.target.value)}><option value="capacity">한 기억에 담을 수 있는 경험 수 변경</option><option value="label">기억 칸의 주제·제한 설정</option><option value="diary">기본 일기장의 기억 용량 변경</option><option value="merge">두 기억을 하나로 합치기</option><option value="extra">한 기억을 담는 별도 책 획득</option><option value="directDiary">이번 사건의 경험을 일기장에 직접 쓰기</option></select></Field>
+      {['capacity', 'label', 'merge'].includes(specialAction) && <Field label="대상 기억"><select className="select" value={specialMemory} onChange={event => setSpecialMemory(event.target.value)}>{game.memories.map((memory, index) => <option key={memory.id} value={memory.id}>기억 {index + 1}</option>)}</select></Field>}
+      {specialAction === 'merge' && <Field label="이 기억으로 합치기"><select className="select" value={specialTarget} onChange={event => setSpecialTarget(event.target.value)}>{game.memories.map((memory, index) => <option key={memory.id} value={memory.id}>기억 {index + 1}</option>)}</select></Field>}
+      {['capacity', 'diary'].includes(specialAction) && <Field label="지시받은 새 용량"><input className="input" type="number" min="1" max="100" value={specialNumber} onChange={event => setSpecialNumber(Number(event.target.value))} /></Field>}
+      {['label', 'extra', 'directDiary'].includes(specialAction) && <Field label={specialAction === 'label' ? '주제 또는 제한' : '기록할 한 문장의 경험'}><textarea className="textarea" rows={4} value={specialText} onChange={event => setSpecialText(event.target.value)} /></Field>}
+      <div className="modal-footer"><button className="button-secondary" onClick={() => setSpecialTool(false)}>취소</button><button className="button-primary" onClick={applySpecial}>지시 적용</button></div>
+    </Modal>;
+  const renderEntityEditor = (editor: Editor) => <Modal title={`${{
+    skills: '기술',
+    resources: '자원',
+    characters: '등장인물',
+    marks: '표식'
+  }[editor.kind]} ${editor.id ? '수정' : '추가'}`} close={() => setEditor(null)}><form onSubmit={saveEntity}><Field label="이름과 설명"><textarea className="textarea" rows={3} value={editor.text} onChange={event => setEditor({
+          ...editor,
+          text: event.target.value
+        })} placeholder="이름: 짧은 설명" required /></Field>{editor.kind === 'resources' && <label className="checkbox-row"><input type="checkbox" checked={editor.stationary} onChange={event => setEditor({
+          ...editor,
+          stationary: event.target.checked
+        })} />떠날 때 가져갈 수 없는 정착 자원</label>}{editor.kind === 'characters' && <Field label="존재의 종류"><select className="select" value={editor.immortal ? 'immortal' : 'mortal'} onChange={event => setEditor({
+          ...editor,
+          immortal: event.target.value === 'immortal'
+        })}><option value="mortal">필멸자</option><option value="immortal">불멸자</option></select></Field>}<p className="field-hint">현재 사건에서 지시한 변화를 기록하세요.</p><div className="modal-footer"><button className="button-secondary" type="button" onClick={() => setEditor(null)}>취소</button><button className="button-primary" type="submit">기록하기 <Check size={15} /></button></div></form></Modal>;
+  const renderMemoryEditor = (memoryEditor: {
+    memoryId: string;
+    experienceId: string;
+    text: string;
+    diaryId?: string;
+  }) => <Modal title="사건의 지시에 따라 경험 수정" close={() => setMemoryEditor(null)}><Field label="바뀐 경험"><textarea className="textarea" rows={5} value={memoryEditor.text} onChange={event => setMemoryEditor({
+        ...memoryEditor,
+        text: event.target.value
+      })} /></Field><button className="button-primary" onClick={() => {
+      if (apply(state => memoryEditor.diaryId ? rules.editDiaryExperience(state, memoryEditor.diaryId, memoryEditor.experienceId, memoryEditor.text) : rules.editExperience(state, memoryEditor.memoryId, memoryEditor.experienceId, memoryEditor.text))) setMemoryEditor(null);
+    }}>수정 기록하기</button><button className="button-danger" onClick={() => confirm('이 경험만 지우라는 지시인가요?', '기본 망각은 기억 전체에 적용합니다. 사건이 이 경험의 삭제를 명시한 경우에만 적용하세요.', () => {
+      if (apply(state => memoryEditor.diaryId ? rules.deleteDiaryExperience(state, memoryEditor.diaryId, memoryEditor.experienceId) : rules.deleteExperience(state, memoryEditor.memoryId, memoryEditor.experienceId))) setMemoryEditor(null);
+    })}>지시에 따라 이 경험만 삭제</button></Modal>;
+  const renderJournalEditor = (journalEditor: {
+    id: string;
+    text: string;
+  }) => <Modal title={journalEditor.id === 'finale' ? '최후의 이야기 기록' : '연대기 수정'} close={() => setJournalEditor(null)}><Field label="이야기"><textarea className="textarea" rows={6} value={journalEditor.text} onChange={event => setJournalEditor({
+        ...journalEditor,
+        text: event.target.value
+      })} /></Field><button className="button-primary" onClick={() => {
+      apply(state => journalEditor.id === 'finale' ? {
+        ...state,
+        gameOverText: journalEditor.text
+      } : {
+        ...state,
+        journal: state.journal.map(entry => entry.id === journalEditor.id ? {
+          ...entry,
+          textContent: journalEditor.text
+        } : entry)
+      }, '기록을 갱신했습니다.', true);
+      setJournalEditor(null);
+    }}>기록 갱신</button></Modal>;
+  const renderAlternate = () => <Modal title="다른 운명의 갈래" close={() => setAltModal(false)}><p className="field-hint">현재 번호에 대체 사건을 연결합니다. 다음 방문에도 같은 사건의 다음 문단을 읽습니다.</p><Field label="부록의 대체 사건"><select className="select" value={altSelection} onChange={event => setAltSelection(Number(event.target.value))}>{alternatePrompts.map(item => <option key={item.id} value={item.id}>{item.sourceLabel} · {item.category}</option>)}</select></Field><div className="alt-preview">{alternatePrompts.find(item => item.id === altSelection)?.entries?.[0] ?? alternatePrompts.find(item => item.id === altSelection)?.text}</div><div className="modal-footer"><button className="button-secondary" onClick={() => {
+        if (apply(state => rules.chooseAlternatePrompt(state, null))) setAltModal(false);
+      }}>기본 사건 사용</button><button className="button-primary" onClick={() => {
+        if (apply(state => rules.chooseAlternatePrompt(state, altSelection))) setAltModal(false);
+      }}>이 사건으로 대체 <ArrowRight size={15} /></button></div></Modal>;
+  const renderConflict = (conflict: GameState) => <Modal title="두 곳의 기록이 다릅니다" close={() => {}}><p>기기의 ‘{game.characterName || '새 기록'}’과 클라우드의 ‘{conflict.characterName || '새 기록'}’ 중 이어갈 기록을 선택하세요. 선택 전에는 클라우드에 덮어쓰지 않습니다.</p><div className="form-row"><button className="button-secondary" onClick={exportSave}>기기 기록 먼저 내보내기</button><button className="button-secondary" onClick={() => { stopRoll(); chooseSave('local'); }}>이 기기 기록 사용</button><button className="button-primary" onClick={() => { stopRoll(); chooseSave('cloud'); }}>클라우드 기록 사용</button></div></Modal>;
+  return <div className="app-shell"><a className="skip-link" href="#main-content">본문으로 이동</a>
+    <header className="app-topbar"><button className="brand" onClick={() => setPage('play')} aria-label="이야기 처음 화면"><span className="brand-mark"><Moon size={25} /></span><span><strong className="brand-name">Thousand Year Old Vampire</strong><span className="brand-kicker">천년 동안 살아온 흡혈귀</span></span></button><div className="topbar-actions"><span className="save-status"><span className="status-dot" />{status}</span><button className="button-ghost" onClick={exportSave} title="기록 파일 내보내기"><ArrowDownToLine size={16} /><span>내보내기</span></button><button className="button-secondary" onClick={user ? logout : login}>{user ? <LogOut size={15} /> : <LogIn size={15} />}<span>{user ? '로그아웃' : '로그인'}</span></button></div></header>
+    <div className="workspace"><aside className="sidebar"><div className="sidebar-intro"><span className="eyebrow">A LIFE OUTSIDE OF TIME</span><h2>{started ? game.characterName : '아직 이름 없는 밤'}</h2><p>{started ? game.vampireOrigin || '지나온 삶의 흔적을 기록합니다.' : '기억하고, 잊고,\n다시 당신이 되는 이야기.'}</p></div><nav className="nav-list" aria-label="기록표 탐색">{navigation.map(([id, label, Icon]) => <button key={id} className={`nav-item ${page === id ? 'active' : ''}`} disabled={!started} onClick={() => setPage(id)} aria-current={page === id ? 'page' : undefined}><Icon size={18} className="nav-icon" /><span className="nav-label">{label}</span>{id === 'play' ? <ChevronRight size={15} /> : <span className="nav-count">{counts[id]}</span>}</button>)}</nav><div className="sidebar-footer"><button className={`nav-item ${page === 'rules' ? 'active' : ''}`} onClick={() => setPage('rules')}><CircleHelp size={18} />규칙 안내</button><button className="nav-item" onClick={() => importRef.current?.click()}><ArrowUpFromLine size={18} />기록 불러오기</button>{started && <button className="nav-item" onClick={() => confirm('새로운 이야기를 시작할까요?', '현재 기록을 먼저 파일로 내보내 주세요. 기기에는 복구본 하나가 남고, 새 이야기가 현재 기록을 대체합니다.', () => {
+            backup();
+            setGame(rules.createInitialGameState());
+            setSetup(emptySetup);
+            setJournalText('');
+            setExperience('');
+            setPage('play');
+          })}><RotateCcw size={17} />새로운 이야기</button>}<div className="sidebar-colophon">A SOLO ROLEPLAYING COMPANION<br /><span>Based on the game by Tim Hutchings</span></div></div></aside>
+    <main className="workspace-main" id="main-content" tabIndex={-1}><div className="page-heading"><div><p className="eyebrow">{heading[0]}</p><h1 className="page-title">{heading[1]}</h1><p className="page-description">{heading[2]}</p></div>{started && <span className="chapter-indicator"><span>CHAPTER</span>{String(game.currentPromptId).padStart(2, '0')}<i>/ 80</i></span>}</div>
+      {error && <div className="notice warning" role="alert"><Cloud size={18} /><span>{error}</span><button className="icon-button" onClick={dismissError} aria-label="알림 닫기"><X size={16} /></button></div>}
+      {!!game.migrationNotes?.length && <details className="notice"><summary>이전 기록에서 확인할 항목 {game.migrationNotes.length}개</summary><ul>{game.migrationNotes.map((note, index) => <li key={index}>{note}</li>)}</ul></details>}
+      {page === 'rules' ? renderRules() : !started ? renderSetup() : <><div className="stats-strip">{[['기억', `${counts.memories} / ${game.memories.length}`, Library], ['체크 가능한 기술', game.skills.filter(item => !item.isChecked && !item.isLost).length, Sword], ['남은 자원', counts.resources, Gem], ['지나온 사건', game.turnCount ?? game.journal.length, History]].map(([label, value, Icon]) => {
+              const StatIcon = Icon as typeof Library;
+              return <div className="stat-item" key={label as string}><StatIcon size={17} /><span className="stat-label">{label as string}</span><span className="stat-value">{value as string}</span></div>;
+            })}</div>
+      {game.isGameOver && <section className="ending-banner"><Moon size={25} /><div><p className="eyebrow">THE LAST PAGE</p><h2>당신의 밤이 저물었습니다.</h2><p>{game.gameOverText}</p>{prompt.seasonBreak && <button className="button-primary" onClick={() => setSeasonModal(true)}>같은 인물의 다음 시즌 <ArrowRight size={15} /></button>}<button className="button-ghost" onClick={() => setJournalEditor({
+                id: 'finale',
+                text: journalText.trim() || game.gameOverText
+              })}>최후의 이야기 기록 <Feather size={14} /></button></div><button className="button-secondary" onClick={exportSave}><ArrowDownToLine size={16} />이야기 보관하기</button></section>}
+      {page === 'play' && renderPlay()}
+      {page === 'memories' && <><div className="notice"><Library size={18} /><span>사건의 지시로 수정·복구할 때는 이야기 화면의 ‘특별한 지시 적용’을 켜세요.</span></div><div className="memory-grid">{game.memories.map((memory, index) => <div key={memory.id}>{memoryCard(memory, index)}{game.promptEditEnabled && <div className="item-actions"><button className="button-ghost" onClick={() => confirm('이 기억 칸을 영구히 잃을까요?', '사건이 명시적으로 칸 자체를 잃으라고 지시했을 때 적용합니다.', () => apply(state => rules.reduceMemoryCapacity(state, memory.id)))}>이 기억 칸을 잃기</button><button className="button-ghost" onClick={() => apply(state => rules.preserveMemory(state, memory.id))}>영구 기억으로 보존</button><button className="button-ghost" onClick={() => confirm('이 기억을 영원히 잊을까요?', '사건이 영구 삭제를 명시한 경우에만 적용합니다. 이후 복구 지시로도 되살릴 수 없습니다.', () => apply(state => rules.forgetMemory(state, memory.id, '사건 지시에 따라 영원히 잊었습니다.', false)))}>영원히 잊기</button></div>}</div>)}</div>{!!game.permanentMemories?.length && <section className="panel"><div className="panel-header"><h2 className="panel-title">별도로 보존하는 영구 기억</h2></div><div className="panel-body">{game.permanentMemories.map((memory, index) => memoryCard(memory, index, true))}</div></section>}{!!game.forgottenMemories?.length && <details className="panel"><summary>잊은 기억의 흔적 · {game.forgottenMemories.length}</summary><div className="panel-body">{game.forgottenMemories.map(memory => <article className="entity-card lost" key={memory.id}><div>{memory.experiences.map(item => <p key={item.id}>{item.text}</p>)}</div>{game.promptEditEnabled && <button className="button-secondary" onClick={() => {
+                    const slot = game.memories.find(item => !item.experiences.length);
+                    if (!slot) return setToast('복구할 빈 기억 칸을 먼저 마련해 주세요.');
+                    apply(state => rules.restoreForgottenMemory(state, memory.id, slot.id));
+                  }}>빈 칸에 복구</button>}</article>)}</div></details>}</>}
+      {(['skills', 'resources', 'characters', 'marks'] as Page[]).includes(page) && renderEntities()}
+      {page === 'diary' && renderDiary()}
+      {page === 'journal' && renderJournal()}
+      </>}
+      <footer className="footer"><span>THOUSAND YEAR OLD VAMPIRE</span><span>기억은 사라져도, 이야기는 남습니다.</span><button className="button-ghost" onClick={() => setPage('rules')}>룰북과 함께 <ArrowRight size={12} /></button></footer>
+    </main></div>
+    <input className="sr-only" ref={importRef} type="file" accept=".json,application/json" aria-label="기록 파일 선택" onChange={event => {
+      const file = event.target.files?.[0];
+      if (file) void importSave(file);
+      event.target.value = '';
+    }} />
+    {toast && <div className="toast" role="status"><span>{toast}</span><button className="icon-button" onClick={() => setToast('')} aria-label="알림 닫기"><X size={16} /></button></div>}
+    {confirmation && renderConfirmation(confirmation)}
+    {costMode && renderCost()}
+    {seasonModal && renderSeason()}
+    {specialTool && renderSpecial()}
+    {editor && renderEntityEditor(editor)}
+    {memoryEditor && renderMemoryEditor(memoryEditor)}
+    {journalEditor && renderJournalEditor(journalEditor)}
+    {altModal && renderAlternate()}
+    {conflict && renderConflict(conflict)}
+  </div>;
+}
 export default App;
