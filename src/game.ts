@@ -609,6 +609,7 @@ export function normalizeGameState(input: unknown): GameState {
   }));
   const hasSchema = raw.schemaVersion === SCHEMA_VERSION;
   const state: GameState = { ...initial, schemaVersion: SCHEMA_VERSION,
+    ...(typeof raw.storyId === 'string' ? { storyId: raw.storyId } : {}),
     sequence: Math.max(reservedSequence, count(raw.sequence, reservedSequence, 1)),
     characterName: text(raw.characterName), vampireOrigin: text(raw.vampireOrigin),
     currentPromptId: raw.currentPromptId === 0 && count(raw.season, 1, 1) > 1 ? 0 : Math.min(80, count(raw.currentPromptId, 1, 1)), promptVisitHistory: history,

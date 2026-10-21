@@ -93,6 +93,8 @@ export interface MovementRoll {
 }
 
 export interface GameState {
+  /** Stable identity keeps separate characters' unfinished writing apart. */
+  storyId?: string;
   currentPromptId: number;
   promptVisitHistory: Record<number, number>;
   memories: Memory[];
